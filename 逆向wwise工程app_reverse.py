@@ -297,7 +297,7 @@ if __name__ == "__main__":
     analyzer = WwiseProjectAnalyzer(compiler)
     
     # 你的工程路径 (请修改此处)
-    project_root = r"G:\wwiseProj\release\Actor-Mixer Hierarchy\Activity_3D.wwu"
+    project_root = r"G:\wwiseProj\release\Actor-Mixer Hierarchy\player\player_action.wwu"
     
     # 执行生成
     analyzer.generate_dataset(project_root)

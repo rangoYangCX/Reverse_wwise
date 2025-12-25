@@ -87,5 +87,5 @@ def analyze_file_issues(file_path):
 
 # 运行诊断
 # 请将文件名替换为您当前生成的有问题的文件名
-target_file = "wwise_training_v7_final_colloquial.jsonl" 
+target_file = "wwise_character_action_refined.jsonl" 
 analyze_file_issues(target_file)
