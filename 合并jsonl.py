@@ -58,8 +58,8 @@ def merge_jsonl_files(file1_path, file2_path, output_path):
         print(f"合并过程中发生错误: {e}")
 
 # ============== 配置 ==============
-file_one = "wwise_training_with_instructions.jsonl" 
-file_two = "11.jsonl" 
+file_one = "wwise_final_train.jsonl" 
+file_two = "wwise_params_10k_final.jsonl" 
 output_file = "combined_wwise_data_v1.jsonl"
 
 merge_jsonl_files(file_one, file_two, output_file)

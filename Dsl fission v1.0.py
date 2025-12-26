@@ -1,7 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-【样本裂变器】DSL Sample Fission V1.0
+【样本裂变器】DSL Sample Fission V1.1
 功能：基于现有 DSL 样本进行合法裂变，扩充训练数据量
+
+更新 V1.1:
+1. [Feat] 支持 Attenuation 专用裂变（曲线点微调、RadiusMax 变化）
+2. [Feat] 支持 GameParameter 专用裂变（范围微调）
+3. [Feat] 支持 SwitchGroup 专用裂变（增减 Switch）
+4. [Feat] 支持 StateGroup 专用裂变（增减 State）
+5. [Feat] 自动识别类型并选择最佳裂变策略
 
 核心原则：
 1. 参数值必须基于真实存在的值（从现有数据中提取）
@@ -13,9 +20,10 @@
 - Simple: 仅改名、微调数值
 - Medium: 结构简化、子集提取
 - Advanced: 组合拼接、参数交叉
+- Auto: 智能选择（根据类型自动选择最佳策略）
 
 作者: NeuroWwise Team
-版本: V1.0
+版本: V1.1
 """
 
 import json
@@ -43,6 +51,16 @@ class ParameterPool:
     conversions: Set[str] = field(default_factory=set)
     switch_groups: Set[str] = field(default_factory=set)
     state_groups: Set[str] = field(default_factory=set)
+    
+    # V1.1 新增：Attenuation 曲线点池
+    atten_curves: Dict[str, List[str]] = field(default_factory=lambda: defaultdict(list))
+    
+    # V1.1 新增：GameParameter 参数池
+    game_param_ranges: Dict[str, Tuple[float, float]] = field(default_factory=dict)
+    
+    # V1.1 新增：Switch/State 值池
+    switch_values: Dict[str, List[str]] = field(default_factory=lambda: defaultdict(list))
+    state_values: Dict[str, List[str]] = field(default_factory=lambda: defaultdict(list))
     
     # 属性值
     prop_values: Dict[str, Set] = field(default_factory=lambda: defaultdict(set))
@@ -76,6 +94,41 @@ class ParameterPool:
         for match in re.finditer(prop_pattern, dsl_code):
             prop_name, prop_value = match.groups()
             self.prop_values[prop_name].add(prop_value.strip())
+            
+            # V1.1: 提取 GameParameter 范围
+            if prop_name in ["Min", "Max"]:
+                try:
+                    val = float(prop_value.strip())
+                    param_match = re.search(r'SET_PROP\s+"([^"]+)"\s+"' + prop_name, dsl_code)
+                    if param_match:
+                        param_name = param_match.group(1)
+                        if param_name not in self.game_param_ranges:
+                            self.game_param_ranges[param_name] = (0, 100)
+                        min_val, max_val = self.game_param_ranges[param_name]
+                        if prop_name == "Min":
+                            self.game_param_ranges[param_name] = (val, max_val)
+                        else:
+                            self.game_param_ranges[param_name] = (min_val, val)
+                except:
+                    pass
+        
+        # V1.1: 提取 SET_ATTEN_CURVE 曲线点
+        atten_curve_pattern = r'SET_ATTEN_CURVE\s+"([^"]+)"\s+"(\w+)"\s+POINTS\s+\[([^\]]+)\]'
+        for match in re.finditer(atten_curve_pattern, dsl_code):
+            atten_name, curve_type, points = match.groups()
+            self.atten_curves[curve_type].append(points)
+        
+        # V1.1: 提取 Switch 值
+        switch_pattern = r'CREATE Switch "([^"]+)" UNDER "([^"]+)"'
+        for match in re.finditer(switch_pattern, dsl_code):
+            switch_val, group_name = match.groups()
+            self.switch_values[group_name].append(switch_val)
+        
+        # V1.1: 提取 State 值
+        state_pattern = r'CREATE State "([^"]+)" UNDER "([^"]+)"'
+        for match in re.finditer(state_pattern, dsl_code):
+            state_val, group_name = match.groups()
+            self.state_values[group_name].append(state_val)
         
         # 提取对象类型
         create_pattern = r'CREATE\s+(\w+)\s+"([^"]+)"'
@@ -332,6 +385,215 @@ class DSLFission:
         
         return results
     
+    # =========================================================================
+    # V1.1 新增：参数类型专用裂变
+    # =========================================================================
+    
+    def fission_attenuation(self, dsl_code: str, count: int = 3) -> List[str]:
+        """
+        Attenuation 专用裂变
+        
+        策略：
+        1. 改名
+        2. RadiusMax 在合理范围内变化
+        3. 曲线点微调（保持趋势）
+        """
+        results = []
+        
+        for _ in range(count):
+            new_dsl = dsl_code
+            
+            # 1. 改名
+            name_match = re.search(r'CREATE Attenuation "([^"]+)"', dsl_code)
+            if name_match:
+                old_name = name_match.group(1)
+                new_name = self.name_mutator.mutate(old_name, self.pool, 0.7)
+                if new_name != old_name:
+                    new_dsl = new_dsl.replace(f'"{old_name}"', f'"{new_name}"')
+            
+            # 2. RadiusMax 微调 (±20%)
+            radius_match = re.search(r'(SET_PROP\s+"[^"]+"\s+"RadiusMax"\s*=\s*)(\d+)', new_dsl)
+            if radius_match:
+                old_radius = int(radius_match.group(2))
+                factor = random.uniform(0.8, 1.2)
+                new_radius = int(old_radius * factor)
+                new_dsl = new_dsl.replace(
+                    radius_match.group(0),
+                    f'{radius_match.group(1)}{new_radius}'
+                )
+            
+            # 3. 曲线点微调
+            new_dsl = self._mutate_curve_points(new_dsl)
+            
+            if new_dsl != dsl_code:
+                results.append(new_dsl)
+        
+        return results
+    
+    def fission_game_parameter(self, dsl_code: str, count: int = 3) -> List[str]:
+        """
+        GameParameter 专用裂变
+        
+        策略：
+        1. 改名
+        2. Min/Max 范围微调
+        3. InitialValue 调整
+        """
+        results = []
+        
+        for _ in range(count):
+            new_dsl = dsl_code
+            
+            # 1. 改名
+            name_match = re.search(r'CREATE GameParameter "([^"]+)"', dsl_code)
+            if name_match:
+                old_name = name_match.group(1)
+                new_name = self.name_mutator.mutate(old_name, self.pool, 0.6)
+                if new_name != old_name:
+                    new_dsl = new_dsl.replace(f'"{old_name}"', f'"{new_name}"')
+            
+            # 2. 数值微调
+            for prop in ["Min", "Max", "InitialValue"]:
+                prop_match = re.search(rf'(SET_PROP\s+"[^"]+"\s+"{prop}"\s*=\s*)([-\d.]+)', new_dsl)
+                if prop_match:
+                    old_val = float(prop_match.group(2))
+                    if old_val != 0:
+                        factor = random.uniform(0.9, 1.1)
+                        new_val = old_val * factor
+                        # 保持整数或小数格式
+                        if old_val == int(old_val):
+                            new_val = int(new_val)
+                        new_dsl = new_dsl.replace(
+                            prop_match.group(0),
+                            f'{prop_match.group(1)}{new_val}'
+                        )
+            
+            if new_dsl != dsl_code:
+                results.append(new_dsl)
+        
+        return results
+    
+    def fission_switch_group(self, dsl_code: str, count: int = 2) -> List[str]:
+        """
+        SwitchGroup 专用裂变
+        
+        策略：
+        1. 改名
+        2. 增减 Switch 数量
+        3. Switch 改名
+        """
+        results = []
+        
+        for _ in range(count):
+            lines = dsl_code.strip().split("\n")
+            
+            # 找到 SwitchGroup 名称
+            group_match = re.search(r'CREATE SwitchGroup "([^"]+)"', dsl_code)
+            if not group_match:
+                continue
+            
+            group_name = group_match.group(1)
+            
+            # 收集所有 Switch
+            switches = re.findall(r'CREATE Switch "([^"]+)"', dsl_code)
+            
+            # 策略：随机移除一个 Switch 或改名
+            if len(switches) > 2 and random.random() > 0.5:
+                # 移除一个
+                to_remove = random.choice(switches[1:])  # 保留第一个
+                lines = [l for l in lines if f'"{to_remove}"' not in l]
+            else:
+                # 改名
+                for i, line in enumerate(lines):
+                    if "CREATE Switch" in line:
+                        switch_match = re.search(r'"([^"]+)"', line)
+                        if switch_match and random.random() > 0.6:
+                            old_switch = switch_match.group(1)
+                            new_switch = self._mutate_switch_name(old_switch)
+                            lines[i] = line.replace(f'"{old_switch}"', f'"{new_switch}"')
+            
+            new_dsl = "\n".join(lines)
+            if new_dsl != dsl_code:
+                results.append(new_dsl)
+        
+        return results
+    
+    def fission_state_group(self, dsl_code: str, count: int = 2) -> List[str]:
+        """
+        StateGroup 专用裂变 (类似 SwitchGroup)
+        """
+        results = []
+        
+        for _ in range(count):
+            lines = dsl_code.strip().split("\n")
+            
+            # 找到 StateGroup 名称
+            group_match = re.search(r'CREATE StateGroup "([^"]+)"', dsl_code)
+            if not group_match:
+                continue
+            
+            # 收集所有 State
+            states = re.findall(r'CREATE State "([^"]+)"', dsl_code)
+            
+            # 策略：随机移除一个 State 或改名
+            if len(states) > 2 and random.random() > 0.5:
+                to_remove = random.choice(states[1:])
+                lines = [l for l in lines if f'"{to_remove}"' not in l]
+            else:
+                for i, line in enumerate(lines):
+                    if "CREATE State" in line:
+                        state_match = re.search(r'"([^"]+)"', line)
+                        if state_match and random.random() > 0.6:
+                            old_state = state_match.group(1)
+                            new_state = self._mutate_state_name(old_state)
+                            lines[i] = line.replace(f'"{old_state}"', f'"{new_state}"')
+            
+            new_dsl = "\n".join(lines)
+            if new_dsl != dsl_code:
+                results.append(new_dsl)
+        
+        return results
+    
+    def _mutate_curve_points(self, dsl: str) -> str:
+        """微调曲线点"""
+        def mutate_point(match):
+            x, y = match.groups()
+            x_val = float(x)
+            y_val = float(y)
+            
+            # X 轴微调 ±10%
+            if x_val > 0:
+                x_val *= random.uniform(0.9, 1.1)
+            
+            # Y 轴微调 ±15%
+            if y_val != 0:
+                y_val *= random.uniform(0.85, 1.15)
+            
+            return f"({x_val:.0f},{y_val:.1f})"
+        
+        return re.sub(r'\((\d+(?:\.\d+)?),\s*([-\d.]+)\)', mutate_point, dsl)
+    
+    def _mutate_switch_name(self, name: str) -> str:
+        """变异 Switch 名称"""
+        common_materials = ["WOOD", "STONE", "GRASS", "METAL", "WATER", "SAND", "SNOW", "ICE"]
+        common_chars = ["Player", "NPC", "Monster", "Enemy", "Boss"]
+        
+        if name.upper() in [m.upper() for m in common_materials]:
+            return random.choice(common_materials)
+        if name in common_chars:
+            return random.choice(common_chars)
+        
+        return name + random.choice(["_v2", "_new", "_alt", "2"])
+    
+    def _mutate_state_name(self, name: str) -> str:
+        """变异 State 名称"""
+        common_states = ["None", "True", "False", "On", "Off", "Default", "Active", "Inactive"]
+        
+        if name in common_states:
+            return random.choice(common_states)
+        
+        return name + random.choice(["_v2", "_alt", "2"])
+    
     def _swap_link_target(self, dsl: str, link_type: str, new_target: str) -> str:
         """替换 LINK 目标"""
         pattern = rf'(LINK\s+"[^"]+"\s+TO\s+)"[^"]+"\s+(AS\s+"{link_type}")'
@@ -529,27 +791,39 @@ class FissionProcessor:
             # 随机选择一个样本进行裂变
             base_sample = random.choice(samples)
             base_dsl = base_sample.get("output", "")
+            root_type = base_sample.get("meta", {}).get("root_type", "")
             
             fissioned = []
             
-            if level == "simple":
-                fissioned = self.fission.fission_simple(base_dsl, 2)
-            elif level == "medium":
-                fissioned = self.fission.fission_simple(base_dsl, 1)
-                fissioned += self.fission.fission_medium(base_dsl, 1)
-            elif level == "advanced":
-                fissioned = self.fission.fission_simple(base_dsl, 1)
-                fissioned += self.fission.fission_medium(base_dsl, 1)
-                fissioned += self.fission.fission_advanced(all_dsl, 1)
-            elif level == "auto":
-                # 自动选择
-                r = random.random()
-                if r < 0.5:
+            # V1.1: 根据类型选择裂变方法
+            if root_type == "Attenuation":
+                fissioned = self.fission.fission_attenuation(base_dsl, 2)
+            elif root_type == "GameParameter":
+                fissioned = self.fission.fission_game_parameter(base_dsl, 2)
+            elif root_type == "SwitchGroup":
+                fissioned = self.fission.fission_switch_group(base_dsl, 2)
+            elif root_type == "StateGroup":
+                fissioned = self.fission.fission_state_group(base_dsl, 2)
+            else:
+                # 原有的容器类型裂变逻辑
+                if level == "simple":
                     fissioned = self.fission.fission_simple(base_dsl, 2)
-                elif r < 0.8:
-                    fissioned = self.fission.fission_medium(base_dsl, 2)
-                else:
-                    fissioned = self.fission.fission_advanced(all_dsl, 1)
+                elif level == "medium":
+                    fissioned = self.fission.fission_simple(base_dsl, 1)
+                    fissioned += self.fission.fission_medium(base_dsl, 1)
+                elif level == "advanced":
+                    fissioned = self.fission.fission_simple(base_dsl, 1)
+                    fissioned += self.fission.fission_medium(base_dsl, 1)
+                    fissioned += self.fission.fission_advanced(all_dsl, 1)
+                elif level == "auto":
+                    # 自动选择
+                    r = random.random()
+                    if r < 0.5:
+                        fissioned = self.fission.fission_simple(base_dsl, 2)
+                    elif r < 0.8:
+                        fissioned = self.fission.fission_medium(base_dsl, 2)
+                    else:
+                        fissioned = self.fission.fission_advanced(all_dsl, 1)
             
             # 验证并添加
             for new_dsl in fissioned:
@@ -667,7 +941,7 @@ def main():
 
 示例:
   # 简单裂变到 10000 样本
-  python dsl_fission.py wwise_reverse_dataset.jsonl wwise_reverse_dataset_output.jsonl --target 12000 --level simple
+  python dsl_fission.py input.jsonl output.jsonl --target 10000 --level simple
   
   # 中级裂变
   python dsl_fission.py input.jsonl output.jsonl --target 8000 --level medium

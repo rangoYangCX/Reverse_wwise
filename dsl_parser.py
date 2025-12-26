@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-[逻辑引擎]DSL 解析器 (V7.2 - 父子同名修复版)
-功能:将 DSL (Domain Specific Language) 翻译为 WAAPI JSON 执行计划。
-维护者:NeuroWwise Architecture Team
+【逻辑引擎】DSL 解析器 (V7.3 - Attenuation 曲线支持版)
+功能：将 DSL (Domain Specific Language) 翻译为 WAAPI JSON 执行计划。
+维护者：NeuroWwise Architecture Team
 
 版本历史:
+V7.3:   [Feat] 新增 SET_ATTEN_CURVE 语法 (Attenuation 衰减曲线设置)
+        [Feat] 支持 VolumeDry, LowPassFilter, Spread 等曲线类型
+
 V7.2:   [Critical Fix] 修复父子同名问题 - 优先返回容器类型作为父对象
         [Fix] _resolve_via_registry 和 get_guid 都增加容器优先逻辑
 
@@ -17,7 +20,7 @@ V7.0:   [Feat] 新增 ADD_ACTION 语法 (Play/Stop/Pause/Resume/SetSwitch/SetSta
 
 V6.5:   [Fix] 物理文件夹穿透 (Physical Folder Penetration)。
 V6.4:   [Fix] 智能降级策略 (Smart Downgrade)。
-V6.3:   [Fix] 针对 WorkUnit 创建,将 onNameConflict 策略改为 "rename"。
+V6.3:   [Fix] 针对 WorkUnit 创建，将 onNameConflict 策略改为 "rename"。
 V6.1:   [Fix] Attenuation 属性修正 (OverridePositioning)。
 V6.0:   [Feat] Registry 协同完全体。
 """
@@ -118,12 +121,12 @@ class DSLParser:
         }
 
     def set_registry(self, registry):
-        """ [V6.0] 注入 Registry 实例,用于增强路径解析能力 """
+        """ [V6.0] 注入 Registry 实例，用于增强路径解析能力 """
         self.registry = registry
 
     def parse(self, dsl_lines):
         """
-        [核心解析函数]
+        【核心解析函数】
         输入: DSL 代码列表 (list of strings)
         输出: WAAPI 执行计划 (list of dicts)
         """
@@ -151,7 +154,7 @@ class DSLParser:
 
     def _parse_single_line(self, line, line_idx, current_plan):
         """
-        [V7.0 Refactored] 解析单行 DSL,返回生成的 plan 步骤列表
+        [V7.0 Refactored] 解析单行 DSL，返回生成的 plan 步骤列表
         """
         steps = []
         
@@ -246,6 +249,16 @@ class DSLParser:
             return self._handle_rtpc_curve(obj, param, prop, points_str)
 
         # ------------------------------------------------------
+        # 指令 8.5: SET_ATTEN_CURVE (Attenuation 衰减曲线设置) [V7.3 New]
+        # 语法: SET_ATTEN_CURVE "AttenuationName" "CurveType" POINTS [(x1,y1), (x2,y2), ...]
+        # CurveType: VolumeDry, LowPassFilter, HighPassFilter, Spread, Focus
+        # ------------------------------------------------------
+        match_atten_curve = re.match(r'SET_ATTEN_CURVE\s+"([^"]+)"\s+"([^"]+)"\s+POINTS\s+\[(.+)\]', line, re.IGNORECASE)
+        if match_atten_curve:
+            atten_name, curve_type, points_str = match_atten_curve.groups()
+            return self._handle_atten_curve(atten_name, curve_type, points_str)
+
+        # ------------------------------------------------------
         # 指令 9: DELETE (删除对象) [V7.0 New]
         # 语法: DELETE "ObjectName"
         # ------------------------------------------------------
@@ -306,7 +319,7 @@ class DSLParser:
             }]
 
         # ------------------------------------------------------
-        # 容错处理:未知指令
+        # 容错处理：未知指令
         # ------------------------------------------------------
         if line and not line.startswith(('<', '>', '```', '---', '===')):
             self.parse_warnings.append(f"Unrecognized instruction: {line[:50]}...")
@@ -398,11 +411,11 @@ class DSLParser:
         
         # ==========================================================
         # [V7.1 Fix] LINK 目标的智能解析
-        # 重要:setReference 不支持 WAQL！只支持 GUID/Path/Name
-        # 策略:
-        # 1. 如果是 GUID 或绝对路径,直接使用
-        # 2. 如果是名称,尝试通过 Registry 解析为路径
-        # 3. 如果 Registry 找不到,保留名称(让 Driver 去查找)
+        # 重要：setReference 不支持 WAQL！只支持 GUID/Path/Name
+        # 策略：
+        # 1. 如果是 GUID 或绝对路径，直接使用
+        # 2. 如果是名称，尝试通过 Registry 解析为路径
+        # 3. 如果 Registry 找不到，保留名称（让 Driver 去查找）
         # ==========================================================
         
         resolved_target = target
@@ -410,7 +423,7 @@ class DSLParser:
         if not target.startswith(("\\", "{", "$")):
             # 尝试通过 Registry 解析
             if self.registry:
-                # 根据引用类型,确定目标层级
+                # 根据引用类型，确定目标层级
                 target_hierarchy = None
                 if w_ref == "OutputBus":
                     target_hierarchy = "Master-Mixer Hierarchy"
@@ -429,7 +442,7 @@ class DSLParser:
                 found_path = self._find_reference_path(target, target_hierarchy)
                 if found_path:
                     resolved_target = found_path
-                # 如果找不到,保留原始名称(Driver 会尝试查找)
+                # 如果找不到，保留原始名称（Driver 会尝试查找）
 
         # [V5.6] 自动处理 OutputBus 的 Override 逻辑
         if w_ref == "OutputBus":
@@ -473,7 +486,7 @@ class DSLParser:
             hierarchy_hint: 层级提示 (如 "Master-Mixer Hierarchy")
         
         Returns:
-            找到的路径,或 None
+            找到的路径，或 None
         """
         if not self.registry:
             return None
@@ -484,13 +497,13 @@ class DSLParser:
         if not candidates:
             return None
         
-        # 如果有层级提示,优先匹配
+        # 如果有层级提示，优先匹配
         if hierarchy_hint:
             for path in candidates:
                 if hierarchy_hint in path:
                     return path
         
-        # 没有提示或没找到匹配,返回第一个
+        # 没有提示或没找到匹配，返回第一个
         return candidates[0] if candidates else None
 
     def _handle_add_action(self, event_name, action_type, target, extra=None):
@@ -542,9 +555,9 @@ class DSLParser:
         })
         
         # 3. 创建 Play Action
-        # 注意:Wwise Event 的 Action 是特殊结构
+        # 注意：Wwise Event 的 Action 是特殊结构
         # 使用 setReference 来设置 Target 可能更可靠
-        # 这里简化处理,实际可能需要更复杂的 API 调用
+        # 这里简化处理，实际可能需要更复杂的 API 调用
         steps.append({
             "action": "ak.wwise.core.object.create",
             "args": {
@@ -563,7 +576,7 @@ class DSLParser:
         """[V7.0 New] 处理 IMPORT_AUDIO 指令"""
         import os
         
-        # 如果没有指定名称,从文件路径提取
+        # 如果没有指定名称，从文件路径提取
         if not sound_name:
             sound_name = os.path.splitext(os.path.basename(file_path))[0]
         
@@ -607,6 +620,76 @@ class DSLParser:
             }
         }]
 
+    def _handle_atten_curve(self, atten_name, curve_type, points_str):
+        """
+        [V7.3 New] 处理 SET_ATTEN_CURVE 指令
+        
+        语法: SET_ATTEN_CURVE "AttenuationName" "CurveType" POINTS [(x1,y1), (x2,y2), ...]
+        
+        CurveType 支持:
+        - VolumeDry: 主音量衰减曲线
+        - LowPassFilter: 低通滤波曲线
+        - HighPassFilter: 高通滤波曲线
+        - Spread: 空间扩散曲线
+        - Focus: 聚焦曲线
+        
+        WAAPI: ak.wwise.core.object.setAttenuationCurve
+        """
+        # 曲线类型映射 (DSL 名称 -> WAAPI curveType)
+        curve_type_map = {
+            "VolumeDry": "VolumeDryUsage",
+            "VolumeWetGame": "VolumeWetGameUsage",
+            "VolumeWetUser": "VolumeWetUserUsage",
+            "LowPassFilter": "LowPassFilterUsage",
+            "HighPassFilter": "HighPassFilterUsage",
+            "Spread": "SpreadUsage",
+            "Focus": "FocusUsage",
+        }
+        
+        # 解析点集，支持两种格式:
+        # 简化: (x,y), (x,y)
+        # 完整: (x,y,shape), (x,y,shape)
+        points = []
+        
+        # 尝试匹配带 shape 的格式
+        point_matches_full = re.findall(r'\(([^,]+),\s*([^,)]+)(?:,\s*([^)]+))?\)', points_str)
+        
+        for match in point_matches_full:
+            x, y = match[0], match[1]
+            shape = match[2] if len(match) > 2 and match[2] else "Linear"
+            
+            # 清理 shape
+            shape = shape.strip().strip("'\"")
+            if not shape or shape.lower() in ["linear", "lin"]:
+                shape = "Linear"
+            elif shape.lower() in ["constant", "const"]:
+                shape = "Constant"
+            elif shape.lower() in ["log", "logarithmic"]:
+                shape = "Log3"
+            elif shape.lower() in ["scurve", "s-curve", "s"]:
+                shape = "SCurve"
+            elif shape.lower() in ["exp", "exponential"]:
+                shape = "Exp3"
+            
+            points.append({
+                "x": float(x.strip()),
+                "y": float(y.strip()),
+                "shape": shape
+            })
+        
+        # 获取 WAAPI 曲线类型
+        waapi_curve_type = curve_type_map.get(curve_type, curve_type + "Usage")
+        
+        return [{
+            "action": "ak.wwise.core.object.setAttenuationCurve",
+            "args": {
+                "object": atten_name,
+                "curveType": waapi_curve_type,
+                "use": "Custom",
+                "points": points
+            }
+        }]
+
     # ==========================================================
     # 辅助方法 (保持原有逻辑)
     # ==========================================================
@@ -631,7 +714,7 @@ class DSLParser:
     def _resolve_via_registry(self, name, obj_type):
         """
         [V6.0] 通过 Registry 查找最佳匹配路径
-        [V7.2 Fix] 优先返回容器类型,解决父子同名问题
+        [V7.2 Fix] 优先返回容器类型，解决父子同名问题
         """
         if not self.registry:
             return None
@@ -680,14 +763,14 @@ class DSLParser:
                     if path_obj_type in container_types:
                         return path
             
-            # 如果没找到容器,返回第一个(最早创建的)
+            # 如果没找到容器，返回第一个（最早创建的）
             return filtered[0]
         return None
 
     def _resolve_parent_strategy(self, p, child_type=""):
         """
-        [路径导航仪](The Navigation Strategy)
-        功能:解决 "Default Work Unit" 到底是在 Actor-Mixer 还是 Events 里的问题。
+        【路径导航仪】(The Navigation Strategy)
+        功能：解决 "Default Work Unit" 到底是在 Actor-Mixer 还是 Events 里的问题。
         """
         p_low = p.lower()
         child_type = self.type_fix.get(child_type, child_type)
@@ -752,7 +835,7 @@ class DSLParser:
 
     def _parse_val(self, v):
         """
-        [数值清洗器]
+        【数值清洗器】
         """
         s = str(v).strip()
         
@@ -776,7 +859,7 @@ class DSLParser:
 
     def validate_plan(self, plan):
         """
-        [计划校验器]
+        【计划校验器】
         """
         if not plan:
             return False, "Plan is empty"

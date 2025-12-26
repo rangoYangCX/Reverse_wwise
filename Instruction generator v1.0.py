@@ -1,17 +1,24 @@
 # -*- coding: utf-8 -*-
 """
-[指令生成器]Instruction Generator V1.0
-功能:为 DSL 训练数据生成专业的自然语言指令
+【指令生成器】Instruction Generator V1.1
+功能：为 DSL 训练数据生成专业的自然语言指令
 模拟资深游戏音频设计师 / 制作人的口吻
 
-特点:
-1. 随机化表达方式,避免重复
+更新 V1.1:
+1. [Feat] 支持 Attenuation 衰减曲线指令生成
+2. [Feat] 支持 GameParameter RTPC参数指令生成
+3. [Feat] 支持 SwitchGroup 条件切换指令生成
+4. [Feat] 支持 StateGroup 全局状态指令生成
+5. [Feat] 智能猜测用途（根据名称和内容）
+
+特点：
+1. 随机化表达方式，避免重复
 2. 专业术语与口语化表达混合
-3. 覆盖多种业务场景(技能、BOSS、小怪、动作等)
-4. 支持中英文混合(行业习惯)
+3. 覆盖多种业务场景（技能、BOSS、小怪、动作、参数等）
+4. 支持中英文混合（行业习惯）
 
 作者: NeuroWwise Team
-版本: V1.0
+版本: V1.1
 """
 
 import json
@@ -171,7 +178,7 @@ class VocabularyBank:
 # =============================================================================
 
 class NameAnalyzer:
-    """分析 Wwise 对象名称,推断业务场景"""
+    """分析 Wwise 对象名称，推断业务场景"""
     
     # 关键词映射
     KEYWORD_PATTERNS = {
@@ -229,7 +236,7 @@ class NameAnalyzer:
     
     @classmethod
     def analyze(cls, name: str, source: str = "") -> Dict[str, bool]:
-        """分析名称,返回特征标记"""
+        """分析名称，返回特征标记"""
         features = {}
         combined = f"{name} {source}"
         
@@ -281,6 +288,17 @@ class InstructionGenerator:
         commands = meta.get("commands", {})
         depth = meta.get("depth", 0)
         
+        # [V1.1] 优先按 root_type 分发（参数类型）
+        if root_type == "Attenuation":
+            return self._generate_attenuation_instruction(root_name, dsl_output, meta)
+        elif root_type == "GameParameter":
+            return self._generate_game_parameter_instruction(root_name, dsl_output, meta)
+        elif root_type == "SwitchGroup":
+            return self._generate_switch_group_instruction(root_name, dsl_output, meta)
+        elif root_type == "StateGroup":
+            return self._generate_state_group_instruction(root_name, dsl_output, meta)
+        
+        # 原有逻辑：按场景分发
         context_type = self.analyzer.get_context_type(root_name, source)
         features = self.analyzer.analyze(root_name, source)
         
@@ -316,16 +334,16 @@ class InstructionGenerator:
         templates = [
             f"{action}{player}{skill_name}技能的{structure}",
             f"帮我{action}一套{player}使用{skill_name}时的{structure}",
-            f"需要{action}{skill_name}这个技能的{structure},是{player}用的",
-            f"{player}的{skill_name}技能,帮我{action}一下{structure}",
+            f"需要{action}{skill_name}这个技能的{structure}，是{player}用的",
+            f"{player}的{skill_name}技能，帮我{action}一下{structure}",
             f"给{player}{action}一个{skill_name}的{structure}",
             f"我要给{player}{action}{skill_name}技能的{structure}",
-            f"{class_info}的{skill_name}技能,需要{action}{structure}",
+            f"{class_info}的{skill_name}技能，需要{action}{structure}",
             f"帮我把{player}的{skill_name}技能{structure}搭起来",
-            f"{skill_name}这个技能的音效,帮{player}{action}一下",
+            f"{skill_name}这个技能的音效，帮{player}{action}一下",
             f"做一套{player}{skill_name}的{structure}",
             f"{action}一下{class_info}{skill_name}技能的声音层级",
-            f"{player}释放{skill_name}时的音效,需要{action}结构"
+            f"{player}释放{skill_name}时的音效，需要{action}结构"
         ]
         
         instruction = random.choice(templates)
@@ -346,12 +364,12 @@ class InstructionGenerator:
             f"{action}{boss_ref}「{boss_name}」的技能音效结构",
             f"帮我{action}副本{boss_ref}{boss_name}的声音层级",
             f"需要给{boss_name}这个{boss_ref}{action}音效架构",
-            f"{boss_ref}战斗中{boss_name}的音效,帮我{action}一下",
+            f"{boss_ref}战斗中{boss_name}的音效，帮我{action}一下",
             f"给{boss_name}{boss_ref}{action}一套完整的SFX结构",
-            f"副本里{boss_name}{boss_ref}的技能音效,需要{action}",
+            f"副本里{boss_name}{boss_ref}的技能音效，需要{action}",
             f"{action}一套{boss_name}的{boss_ref}战音效结构",
             f"团队副本{boss_ref}{boss_name}需要{action}音效层级",
-            f"{boss_name}的{boss_ref}战,帮我{action}音效架构",
+            f"{boss_name}的{boss_ref}战，帮我{action}音效架构",
             f"这个{boss_ref}{boss_name}的技能音效要{action}"
         ]
         
@@ -374,7 +392,7 @@ class InstructionGenerator:
             f"帮我给{monster_name}这个{monster_ref}{action}声音层级",
             f"{monster_ref}{monster_name}的技能音效需要{action}",
             f"需要{action}一套{monster_name}{monster_ref}用的SFX架构",
-            f"野外{monster_ref}{monster_name}的音效,帮我{action}",
+            f"野外{monster_ref}{monster_name}的音效，帮我{action}",
             f"给场景{monster_ref}{monster_name}{action}音效层级",
             f"{monster_name}这个{monster_ref}的声音结构要{action}",
             f"做一套{monster_name}{monster_ref}的音效"
@@ -399,10 +417,10 @@ class InstructionGenerator:
                 f"{action}一套支持多材质切换的脚步声系统",
                 f"帮我{action}{player}在不同地面材质上的脚步音效结构",
                 f"需要{action}能区分草地、石头、木头等材质的脚步声层级",
-                f"{player}的脚步声要根据材质变化,帮我{action}这套结构",
+                f"{player}的脚步声要根据材质变化，帮我{action}这套结构",
                 f"给{player}{action}一个带材质切换的Footstep系统",
-                f"{action}多材质响应的脚步声架构,要区分不同地面",
-                f"角色在不同地面走路的脚步声,需要{action}",
+                f"{action}多材质响应的脚步声架构，要区分不同地面",
+                f"角色在不同地面走路的脚步声，需要{action}",
                 f"做一套能切换材质的脚步声系统"
             ]
             instruction = random.choice(material_templates)
@@ -411,7 +429,7 @@ class InstructionGenerator:
                 f"{action}{player}的脚步声音效结构",
                 f"帮我{action}一套脚步声的层级架构",
                 f"需要{action}角色移动的脚步音效",
-                f"{player}行走/跑步的脚步声,帮我{action}",
+                f"{player}行走/跑步的脚步声，帮我{action}",
                 f"给角色{action}一套Footstep音效结构",
                 f"做一套脚步声的音效层级",
                 f"{player}的移动脚步声需要{action}"
@@ -436,8 +454,8 @@ class InstructionGenerator:
             f"帮我{action}坐骑{mount_name}的声音层级",
             f"{mount_name}坐骑的移动音效需要{action}",
             f"需要给{mount_name}坐骑{action}一套SFX架构",
-            f"{player}的{mount_name}坐骑,帮我{action}音效结构",
-            f"骑乘系统里{mount_name}的音效,需要{action}",
+            f"{player}的{mount_name}坐骑，帮我{action}音效结构",
+            f"骑乘系统里{mount_name}的音效，需要{action}",
             f"做一套{mount_name}坐骑的音效",
             f"{mount_name}这个坐骑的声音层级要{action}"
         ]
@@ -468,6 +486,263 @@ class InstructionGenerator:
         instruction += self._add_features(features, commands, depth)
         
         return instruction
+
+    # =========================================================================
+    # V1.1 新增：参数类型指令生成
+    # =========================================================================
+    
+    def _generate_attenuation_instruction(
+        self, name: str, dsl_output: str, meta: Dict
+    ) -> str:
+        """生成 Attenuation 衰减曲线相关的 instruction"""
+        
+        action = random.choice(["创建", "配置", "设计", "搭建", "定义"])
+        
+        # 分析衰减特性
+        has_volume_curve = "VolumeDry" in dsl_output
+        has_lowpass = "LowPassFilter" in dsl_output
+        has_spread = "Spread" in dsl_output
+        
+        # 提取 RadiusMax
+        radius_match = re.search(r'RadiusMax.*?=\s*(\d+)', dsl_output)
+        radius = radius_match.group(1) if radius_match else "3000"
+        
+        # 根据名称猜测用途
+        usage_hint = self._guess_attenuation_usage(name)
+        
+        # 模板
+        templates = [
+            f"{action}一个{usage_hint}的3D衰减曲线，最大距离{radius}米",
+            f"帮我{action}{name}的Attenuation，用于{usage_hint}",
+            f"需要{action}一套{usage_hint}的距离衰减设置",
+            f"给{usage_hint}{action}一个衰减配置，范围{radius}",
+            f"{action}{usage_hint}用的3D空间衰减曲线",
+            f"做一个{usage_hint}的Attenuation，衰减距离{radius}",
+            f"{usage_hint}的声音需要{action}衰减曲线",
+            f"帮{usage_hint}配置3D距离衰减，最远{radius}米",
+        ]
+        
+        instruction = random.choice(templates)
+        
+        # 添加曲线特性描述
+        curve_features = []
+        if has_volume_curve:
+            curve_features.append(random.choice(["带音量衰减", "包含Volume曲线", "有音量距离衰减"]))
+        if has_lowpass:
+            curve_features.append(random.choice(["低通滤波", "LowPass曲线", "远距离闷声"]))
+        if has_spread:
+            curve_features.append(random.choice(["空间扩散", "Spread曲线", "近处宽远处窄"]))
+        
+        if curve_features and random.random() > 0.3:
+            connector = random.choice(["，要", "，需要", "，包含"])
+            instruction += connector + "、".join(random.sample(curve_features, min(2, len(curve_features))))
+        
+        return instruction
+    
+    def _generate_game_parameter_instruction(
+        self, name: str, dsl_output: str, meta: Dict
+    ) -> str:
+        """生成 GameParameter 相关的 instruction"""
+        
+        action = random.choice(["创建", "配置", "定义", "设置", "添加"])
+        
+        # 分析参数特性
+        has_min_max = "Min" in dsl_output or "Max" in dsl_output
+        has_slew = "SlewRate" in dsl_output
+        has_filter = "FilterTime" in dsl_output
+        has_builtin = "BindToBuiltInParam" in dsl_output
+        
+        # 提取范围
+        min_match = re.search(r'"Min".*?=\s*([-\d.]+)', dsl_output)
+        max_match = re.search(r'"Max".*?=\s*([-\d.]+)', dsl_output)
+        min_val = min_match.group(1) if min_match else "0"
+        max_val = max_match.group(1) if max_match else "100"
+        
+        # 根据名称猜测用途
+        usage_hint = self._guess_parameter_usage(name)
+        
+        templates = [
+            f"{action}一个{usage_hint}的RTPC参数",
+            f"帮我{action}{name}这个GameParameter",
+            f"需要{action}一个{usage_hint}用的游戏参数",
+            f"给{usage_hint}{action}一个RTPC控制参数",
+            f"{action}{usage_hint}相关的GameParameter",
+            f"做一个{usage_hint}的参数，范围{min_val}到{max_val}",
+            f"{usage_hint}需要{action}一个控制参数",
+            f"帮{usage_hint}配置RTPC参数{name}",
+        ]
+        
+        instruction = random.choice(templates)
+        
+        # 添加特性描述
+        param_features = []
+        if has_slew or has_filter:
+            param_features.append(random.choice(["平滑过渡", "带插值", "有缓动效果"]))
+        if has_builtin:
+            param_features.append(random.choice(["绑定内置参数", "关联引擎参数", "挂载系统参数"]))
+        if has_min_max:
+            param_features.append(f"范围{min_val}~{max_val}")
+        
+        if param_features and random.random() > 0.4:
+            connector = random.choice(["，", "，要", "，需要"])
+            instruction += connector + "、".join(random.sample(param_features, min(2, len(param_features))))
+        
+        return instruction
+    
+    def _generate_switch_group_instruction(
+        self, name: str, dsl_output: str, meta: Dict
+    ) -> str:
+        """生成 SwitchGroup 相关的 instruction"""
+        
+        action = random.choice(["创建", "配置", "设计", "搭建", "定义"])
+        
+        # 提取所有 Switch
+        switches = re.findall(r'CREATE Switch "([^"]+)"', dsl_output)
+        switch_count = len(switches)
+        
+        # 根据名称猜测用途
+        usage_hint = self._guess_switch_usage(name, switches)
+        
+        templates = [
+            f"{action}一套{usage_hint}的Switch切换组",
+            f"帮我{action}{name}这个SwitchGroup",
+            f"需要{action}一个{usage_hint}用的条件切换",
+            f"给{usage_hint}{action}一组Switch状态",
+            f"{action}{usage_hint}相关的切换逻辑",
+            f"做一个{usage_hint}的SwitchGroup，{switch_count}个状态",
+            f"{usage_hint}需要{action}切换组来区分",
+            f"帮{usage_hint}配置Switch切换，包含{switch_count}个选项",
+        ]
+        
+        instruction = random.choice(templates)
+        
+        # 添加状态示例
+        if switches and random.random() > 0.5:
+            sample_switches = random.sample(switches, min(3, len(switches)))
+            instruction += f"，包括{'/'.join(sample_switches)}等状态"
+        
+        return instruction
+    
+    def _generate_state_group_instruction(
+        self, name: str, dsl_output: str, meta: Dict
+    ) -> str:
+        """生成 StateGroup 相关的 instruction"""
+        
+        action = random.choice(["创建", "配置", "设计", "搭建", "定义"])
+        
+        # 提取所有 State
+        states = re.findall(r'CREATE State "([^"]+)"', dsl_output)
+        state_count = len(states)
+        
+        # 根据名称猜测用途
+        usage_hint = self._guess_state_usage(name, states)
+        
+        templates = [
+            f"{action}一套{usage_hint}的State状态组",
+            f"帮我{action}{name}这个StateGroup",
+            f"需要{action}一个{usage_hint}用的全局状态",
+            f"给{usage_hint}{action}一组State",
+            f"{action}{usage_hint}相关的状态切换",
+            f"做一个{usage_hint}的StateGroup，{state_count}种状态",
+            f"{usage_hint}需要{action}状态组来控制",
+            f"帮{usage_hint}配置State状态，包含{state_count}个选项",
+        ]
+        
+        instruction = random.choice(templates)
+        
+        # 添加状态示例
+        if states and random.random() > 0.5:
+            sample_states = random.sample(states, min(3, len(states)))
+            instruction += f"，有{'/'.join(sample_states)}这些状态"
+        
+        return instruction
+    
+    # =========================================================================
+    # 辅助方法：猜测用途
+    # =========================================================================
+    
+    def _guess_attenuation_usage(self, name: str) -> str:
+        """根据 Attenuation 名称猜测用途"""
+        name_lower = name.lower()
+        
+        if any(kw in name_lower for kw in ["skill", "技能"]):
+            return random.choice(["技能音效", "技能声音", "战斗技能"])
+        if any(kw in name_lower for kw in ["monster", "mon", "怪物"]):
+            return random.choice(["怪物音效", "敌人声音", "小怪"])
+        if any(kw in name_lower for kw in ["ambient", "amb", "环境"]):
+            return random.choice(["环境音效", "氛围声", "场景音"])
+        if any(kw in name_lower for kw in ["npc"]):
+            return random.choice(["NPC语音", "NPC音效", "非玩家角色"])
+        if any(kw in name_lower for kw in ["ui", "界面"]):
+            return random.choice(["UI音效", "界面声音"])
+        if any(kw in name_lower for kw in ["music", "bgm"]):
+            return random.choice(["背景音乐", "BGM", "音乐"])
+        if any(kw in name_lower for kw in ["foot", "step", "脚步"]):
+            return random.choice(["脚步声", "移动音效"])
+        if any(kw in name_lower for kw in ["map", "地图"]):
+            return random.choice(["地图音效", "大世界音效"])
+        
+        # 默认
+        return random.choice(["通用音效", "普通声音", "一般音效", name])
+    
+    def _guess_parameter_usage(self, name: str) -> str:
+        """根据 GameParameter 名称猜测用途"""
+        name_lower = name.lower()
+        
+        if any(kw in name_lower for kw in ["volume", "vol"]):
+            return random.choice(["音量控制", "声音大小", "音量调节"])
+        if any(kw in name_lower for kw in ["speed", "velocity"]):
+            return random.choice(["速度控制", "移动速度", "运动参数"])
+        if any(kw in name_lower for kw in ["distance", "dist"]):
+            return random.choice(["距离控制", "远近参数", "距离衰减"])
+        if any(kw in name_lower for kw in ["time", "hour"]):
+            return random.choice(["时间控制", "昼夜变化", "时间参数"])
+        if any(kw in name_lower for kw in ["rain", "snow", "weather"]):
+            return random.choice(["天气控制", "气候参数", "环境氛围"])
+        if any(kw in name_lower for kw in ["combat", "battle"]):
+            return random.choice(["战斗状态", "战斗参数", "战斗控制"])
+        if any(kw in name_lower for kw in ["occlusion", "obstruction"]):
+            return random.choice(["遮挡控制", "障碍物参数", "空间遮蔽"])
+        if any(kw in name_lower for kw in ["azimuth", "elevation"]):
+            return random.choice(["方位角控制", "空间定位", "3D位置"])
+        
+        return random.choice(["通用参数", "控制参数", name])
+    
+    def _guess_switch_usage(self, name: str, switches: List[str]) -> str:
+        """根据 SwitchGroup 名称和内容猜测用途"""
+        name_lower = name.lower()
+        switches_str = " ".join(switches).lower()
+        
+        if any(kw in name_lower for kw in ["material", "mat", "surface"]):
+            return random.choice(["材质切换", "地面材质", "表面类型"])
+        if any(kw in name_lower for kw in ["character", "char"]):
+            return random.choice(["角色类型", "角色区分", "角色切换"])
+        if any(kw in name_lower for kw in ["weapon", "weap"]):
+            return random.choice(["武器类型", "武器切换", "武器区分"])
+        if any(kw in switches_str for kw in ["wood", "stone", "grass", "metal"]):
+            return random.choice(["材质音效", "地面类型", "表面材质"])
+        if any(kw in switches_str for kw in ["player", "npc", "monster"]):
+            return random.choice(["角色类型", "单位区分", "角色切换"])
+        
+        return random.choice(["条件切换", "状态区分", name])
+    
+    def _guess_state_usage(self, name: str, states: List[str]) -> str:
+        """根据 StateGroup 名称和内容猜测用途"""
+        name_lower = name.lower()
+        states_str = " ".join(states).lower()
+        
+        if any(kw in name_lower for kw in ["indoor", "outdoor", "location"]):
+            return random.choice(["室内外切换", "场景环境", "空间类型"])
+        if any(kw in name_lower for kw in ["combat", "battle", "fight"]):
+            return random.choice(["战斗状态", "战斗切换", "战斗模式"])
+        if any(kw in name_lower for kw in ["music", "bgm"]):
+            return random.choice(["音乐状态", "BGM切换", "背景音乐"])
+        if any(kw in name_lower for kw in ["game", "pause", "menu"]):
+            return random.choice(["游戏状态", "暂停状态", "系统状态"])
+        if any(kw in states_str for kw in ["true", "false", "on", "off"]):
+            return random.choice(["开关状态", "布尔切换", "启用/禁用"])
+        
+        return random.choice(["全局状态", "状态控制", name])
     
     def _generate_general_instruction(
         self, name: str, root_type: str, features: Dict, commands: Dict, depth: int
@@ -522,7 +797,7 @@ class InstructionGenerator:
         
         if extras:
             selected = random.sample(extras, min(len(extras), random.randint(1, 2)))
-            connector = random.choice([",要支持", ",需要", ",包含", ",带上", ",加上"])
+            connector = random.choice(["，要支持", "，需要", "，包含", "，带上", "，加上"])
             return connector + "、".join(selected)
         
         return ""
@@ -581,7 +856,7 @@ def process_jsonl(
     output_path: str,
     style: str = "professional"
 ) -> Tuple[int, int]:
-    """处理 JSONL 文件,为每条记录生成 instruction"""
+    """处理 JSONL 文件，为每条记录生成 instruction"""
     
     generator = InstructionGenerator(style=style)
     success_count = 0
@@ -632,7 +907,7 @@ def main():
     parser.add_argument("--style", choices=["professional", "casual", "mixed"],
                         default="professional", help="生成风格")
     parser.add_argument("--preview", action="store_true", 
-                        help="预览模式:只显示前10条生成结果")
+                        help="预览模式：只显示前10条生成结果")
     
     args = parser.parse_args()
     

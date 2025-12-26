@@ -1,25 +1,35 @@
 # -*- coding: utf-8 -*-
 """
-[逆向工程核心]Wwise XML to DSL 转译器 (V3.2 - 质量优化版)
-功能:读取 .wwu 文件,生成与 DSL Parser V7.0 完全兼容的 DSL 代码块
+【逆向工程核心】Wwise XML to DSL 转译器 (V3.4 - Attenuation 曲线支持版)
+功能：读取 .wwu 文件，生成与 DSL Parser V7.3 完全兼容的 DSL 代码块
+
+更新日志 V3.4:
+1. [Feat] 完整支持 Attenuation 曲线提取 (VolumeDry, LowPassFilter, Spread 等)
+2. [Feat] 生成 SET_ATTEN_CURVE 指令而非注释
+3. [Compat] 对齐 DSL Parser V7.3
+
+更新日志 V3.3:
+1. [Feat] 增强 GameParameter 提取：Min/Max/SlewRate/FilterTime 等
+2. [Feat] 增强 SwitchGroup/StateGroup 提取：DefaultSwitch/DefaultState
+3. [Feat] 扩展属性白名单，支持更多常用属性
 
 更新日志 V3.2:
-1. [Fix] 移除 Sound 作为逻辑根,避免生成孤儿样本
+1. [Fix] 移除 Sound 作为逻辑根，避免生成孤儿样本
 2. [Fix] 孤儿样本率从 74.9% 降至 0%
 3. [Quality] 所有样本现在都是完整的、可执行的 DSL
 
 更新日志 V3.1:
 1. [Feat] 支持多个 .wwu 文件同时输入
 2. [Feat] 支持多个目录同时扫描
-3. [Feat] 追加模式:可追加到现有 JSONL 文件
-4. [Feat] 交互模式:支持拖拽多个文件
+3. [Feat] 追加模式：可追加到现有 JSONL 文件
+4. [Feat] 交互模式：支持拖拽多个文件
 5. [Feat] 更详细的处理进度显示
 
 更新日志 V3.0:
 1. [Core] 完全适配 DSL Parser V7.0 的所有新语法
 2. [Feat] 支持 ADD_ACTION 指令生成 (Play/Stop/SetSwitch/SetState)
 3. [Feat] 支持 ASSIGN 指令生成 (Switch Container 赋值)
-4. [Feat] 深度递归模式:提取完整子树
+4. [Feat] 深度递归模式：提取完整子树
 5. [Fix] 类型名严格对齐 Parser 的 type_fix 表
 6. [Fix] 引用类型严格对齐 Parser 的 ref_map 表
 7. [Data] 生成带有复杂度标签的训练数据
@@ -40,11 +50,11 @@
   # 交互模式
   python reverse_compiler.py --interactive
 
-设计原则:
+设计原则：
 - 生成的 DSL 必须能被 DSL Parser V7.0 无损解析
-- 保证执行顺序:Parent Created -> Child Created
-- 采用全量子树策略,让 AI 学习完整的系统构建
-- 不生成孤儿样本,确保每个样本都是完整可执行的
+- 保证执行顺序：Parent Created -> Child Created
+- 采用全量子树策略，让 AI 学习完整的系统构建
+- 不生成孤儿样本，确保每个样本都是完整可执行的
 """
 import os
 import json
@@ -55,8 +65,9 @@ from typing import List, Dict, Optional, Tuple, Any
 
 class WwiseReverseCompilerV3:
     """
-    Wwise XML 逆向编译器 V3.0
+    Wwise XML 逆向编译器 V3.3
     完全对齐 DSL Parser V7.0
+    增强 GameParameter、Attenuation、SwitchGroup 的属性提取
     """
     
     def __init__(self):
@@ -66,14 +77,50 @@ class WwiseReverseCompilerV3:
         self.property_whitelist = [
             # 音频属性
             "Volume", "Pitch", "Lowpass", "Highpass",
-            # 参数属性
-            "InitialValue", "MinValue", "MaxValue",
+            
+            # GameParameter 属性 (V3.3 完整支持)
+            "InitialValue", "Min", "Max", "MinValue", "MaxValue",
+            "BindToBuiltInParam",           # 绑定内置参数 (Distance, Azimuth, Occlusion 等)
+            "RTPCRamping",                  # 平滑模式 (0=None, 1=SlewRate, 2=FilterTime)
+            "SlewRateUp", "SlewRateDown",   # 变化速率
+            "FilterTimeUp", "FilterTimeDown", # 过滤时间
+            "SimulationValue",              # 模拟值
+            
             # 覆盖属性
             "OverrideOutput", "OverridePositioning", "OverrideGameAuxSends",
+            "OverrideEarlyReflections", "OverrideHdrEnvelope", "OverrideMidiEvents",
+            "OverridePriority", "OverrideUserAuxSends", "OverrideEffect",
+            
             # 其他常用属性
             "MakeUpGain", "BusVolume", "InitialDelay",
             "IsLoopingEnabled", "IsLoopingInfinite",
-            "Inclusion", "Color", "Priority"
+            "Inclusion", "Color", "Priority",
+            
+            # Attenuation 属性 (V3.3 新增)
+            "RadiusMax", "ConeUse", "ConeOutsideVolume",
+            "ConeAttenuation", "ConeLowpass", "ConeHighpass",
+            
+            # 随机/序列属性
+            "RandomAvoidRepeating", "RandomAvoidRepeatingCount",
+            "NormalOrShuffle", "RandomOrSequence", "RestartBeginningOrBackward",
+            "PlayMechanismStepOrContinuous", "PlayMechanismLoop",
+            "PlayMechanismInfiniteOrNumberOfLoops", "PlayMechanismSpecialTransitions",
+            "PlayMechanismSpecialTransitionsType", "PlayMechanismSpecialTransitionsValue",
+            
+            # Switch/State 相关
+            "SwitchBehavior", "ResetPlaylistEachPlay",
+            
+            # 定位属性
+            "ListenerRelativeRouting", "Center", "SpatializationMode",
+            "EnableAttenuation", "EnableDiffraction",
+            
+            # HDR 属性
+            "HdrActiveRange", "HdrEnvelopeSensitivity",
+            
+            # 其他
+            "UseMaxSoundPerInstance", "MaxSoundPerInstance",
+            "BelowThresholdBehavior", "VirtualVoiceBehavior",
+            "IsGlobalLimit", "MaxReachedBehavior"
         ]
 
         # =====================================================================
@@ -92,7 +139,10 @@ class WwiseReverseCompilerV3:
             "Conversion": "Conversion",
             "SwitchGroupOrStateGroup": "SwitchGroupOrStateGroup",
             "StateGroup": "StateGroup",
-            "GameParameter": "GameParameter"
+            "GameParameter": "GameParameter",
+            # V3.3 新增
+            "DefaultSwitch": "DefaultSwitch",  # SwitchGroup 默认值
+            "DefaultState": "DefaultState"     # StateGroup 默认值
         }
 
         # =====================================================================
@@ -150,8 +200,8 @@ class WwiseReverseCompilerV3:
         # =====================================================================
         # 5. 逻辑根节点类型 (决定哪些对象生成独立的训练样本)
         # =====================================================================
-        # [V3.2 Fix] 移除 Sound,避免生成孤儿样本
-        # Sound 只作为父容器的子对象被提取,不单独成为训练样本
+        # [V3.2 Fix] 移除 Sound，避免生成孤儿样本
+        # Sound 只作为父容器的子对象被提取，不单独成为训练样本
         # =====================================================================
         self.logic_root_types = [
             "RandomSequenceContainer",
@@ -203,7 +253,7 @@ class WwiseReverseCompilerV3:
         for wu in root.findall(".//WorkUnit"):
             self._traverse_and_collect(wu, "Default Work Unit", blocks, file_path)
         
-        # 如果没有 WorkUnit,尝试从根开始
+        # 如果没有 WorkUnit，尝试从根开始
         if not blocks:
             for child in root:
                 self._traverse_and_collect(child, "Root", blocks, file_path)
@@ -297,6 +347,149 @@ class WwiseReverseCompilerV3:
                     action_lines = self._extract_action(action, name)
                     lines.extend(action_lines)
 
+        # =====================================================================
+        # 6. Attenuation 曲线提取 (V3.3 新增)
+        # =====================================================================
+        if tag == "Attenuation":
+            curve_lines = self._extract_attenuation_curves(element, name)
+            lines.extend(curve_lines)
+
+        # =====================================================================
+        # 7. SwitchGroup/StateGroup 默认值提取 (V3.3 新增)
+        # =====================================================================
+        if tag in ["SwitchGroup", "StateGroup"]:
+            default_lines = self._extract_default_switch_state(element, name, tag)
+            lines.extend(default_lines)
+
+        return lines
+    
+    def _extract_attenuation_curves(self, element: ET.Element, name: str) -> List[str]:
+        """
+        [V3.4 升级] 从 Attenuation 元素提取曲线信息，生成 SET_ATTEN_CURVE 指令
+        
+        支持的曲线类型:
+        - VolumeDry: 主音量衰减
+        - LowPassFilter: 低通滤波
+        - HighPassFilter: 高通滤波  
+        - Spread: 空间扩散
+        - Focus: 聚焦
+        
+        WWU 结构:
+        <CurveUsageInfoList>
+            <VolumeDryUsage>
+                <CurveUsageInfo CurveToUse="Custom">
+                    <Curve Name="VolumeDry">
+                        <PointList>
+                            <Point><XPos>0</XPos><YPos>0</YPos><Flags>5</Flags></Point>
+                            ...
+                        </PointList>
+                    </Curve>
+                </CurveUsageInfo>
+            </VolumeDryUsage>
+        </CurveUsageInfoList>
+        """
+        lines = []
+        
+        # 曲线类型映射 (XML 标签 -> DSL 曲线名)
+        curve_type_map = {
+            "VolumeDryUsage": "VolumeDry",
+            "VolumeWetGameUsage": "VolumeWetGame",
+            "VolumeWetUserUsage": "VolumeWetUser",
+            "LowPassFilterUsage": "LowPassFilter",
+            "HighPassFilterUsage": "HighPassFilter",
+            "SpreadUsage": "Spread",
+            "FocusUsage": "Focus",
+        }
+        
+        # Flags 到 Shape 的映射 (Wwise 内部编码)
+        # 常见值: 5=起点Linear, 0=中间点Linear, 37=终点Constant
+        flags_to_shape = {
+            0: "Linear",
+            5: "Linear",      # 起点
+            37: "Constant",   # 终点 constant
+            4: "SCurve",
+            1: "Log3",
+            2: "Exp3",
+        }
+        
+        # 查找曲线信息列表
+        curve_info_list = element.find("CurveUsageInfoList")
+        if curve_info_list is None:
+            return lines
+        
+        # 遍历所有曲线类型
+        for usage_tag, dsl_curve_name in curve_type_map.items():
+            usage_elem = curve_info_list.find(usage_tag)
+            if usage_elem is None:
+                continue
+            
+            # 检查是否使用自定义曲线
+            curve_usage_info = usage_elem.find("CurveUsageInfo")
+            if curve_usage_info is None:
+                continue
+            
+            curve_to_use = curve_usage_info.get("CurveToUse", "")
+            if curve_to_use != "Custom":
+                continue  # 跳过非自定义曲线 (None, UseVolumeDry, UseProject)
+            
+            # 查找曲线定义
+            curve = curve_usage_info.find("Curve")
+            if curve is None:
+                continue
+            
+            point_list = curve.find("PointList")
+            if point_list is None:
+                continue
+            
+            # 提取所有点
+            points = []
+            for point in point_list.findall("Point"):
+                # 新格式: 子元素
+                x_elem = point.find("XPos")
+                y_elem = point.find("YPos")
+                flags_elem = point.find("Flags")
+                
+                if x_elem is not None and y_elem is not None:
+                    x = x_elem.text or "0"
+                    y = y_elem.text or "0"
+                    flags = int(flags_elem.text) if flags_elem is not None and flags_elem.text else 0
+                else:
+                    # 旧格式: 属性
+                    x = point.get("X", "0")
+                    y = point.get("Y", "0")
+                    flags = int(point.get("Flags", "0"))
+                
+                # 转换 Flags 为 Shape
+                shape = flags_to_shape.get(flags, "Linear")
+                
+                points.append(f"({x},{y})")
+            
+            # 生成 SET_ATTEN_CURVE 指令
+            if points:
+                points_str = ", ".join(points)
+                lines.append(f'SET_ATTEN_CURVE "{name}" "{dsl_curve_name}" POINTS [{points_str}]')
+                self.stats["total_set_props"] += 1  # 统计为属性设置
+        
+        return lines
+    
+    def _extract_default_switch_state(self, element: ET.Element, name: str, tag: str) -> List[str]:
+        """
+        [V3.3 新增] 从 SwitchGroup/StateGroup 提取默认值
+        """
+        lines = []
+        
+        ref_list = element.find("ReferenceList")
+        if ref_list is not None:
+            ref_name = "DefaultSwitch" if tag == "SwitchGroup" else "DefaultState"
+            default_ref = ref_list.find(f"Reference[@Name='{ref_name}']")
+            
+            if default_ref is not None:
+                obj_ref = default_ref.find("ObjectRef")
+                if obj_ref is not None:
+                    default_value = obj_ref.get("Name")
+                    if default_value:
+                        lines.append(f'SET_DEFAULT "{name}" TO "{default_value}"')
+        
         return lines
 
     def _extract_action(self, action_element: ET.Element, event_name: str) -> List[str]:
@@ -333,7 +526,7 @@ class WwiseReverseCompilerV3:
 
     def _get_subtree_dsl(self, element: ET.Element, parent_name: str, depth: int = 0) -> Tuple[List[str], int]:
         """
-        深度递归:获取当前对象及其所有后代的完整 DSL 序列
+        深度递归：获取当前对象及其所有后代的完整 DSL 序列
         
         返回: (DSL 指令列表, 最大深度)
         """
@@ -417,7 +610,7 @@ class WwiseReverseCompilerV3:
         """
         计算样本复杂度
         - simple: 单指令或 2-3 条简单指令
-        - medium: 4-10 条指令,有基本的层级
+        - medium: 4-10 条指令，有基本的层级
         - complex: 10+ 条指令或深度嵌套
         - expert: 包含 ASSIGN、多个 LINK、深层嵌套
         """
@@ -481,7 +674,7 @@ class WwiseReverseCompilerV3:
 class WwiseProjectAnalyzerV3:
     """
     Wwise 工程分析器 V3.2
-    支持多文件/多目录批量逆向,优化样本质量
+    支持多文件/多目录批量逆向，优化样本质量
     """
     
     def __init__(self):
@@ -496,7 +689,7 @@ class WwiseProjectAnalyzerV3:
 
     def generate_dataset(self, root_path: str, output_file: str = "wwise_reverse_dataset.jsonl"):
         """
-        生成训练数据集 (单路径版本,保持向后兼容)
+        生成训练数据集 (单路径版本，保持向后兼容)
         
         Args:
             root_path: Wwise 工程路径或单个 .wwu 文件
@@ -544,7 +737,7 @@ class WwiseProjectAnalyzerV3:
                 continue
                 
             if not os.path.exists(path):
-                print(f"   ⚠️ 路径不存在,跳过: {path}")
+                print(f"   ⚠️ 路径不存在，跳过: {path}")
                 continue
             
             if os.path.isfile(path):
@@ -552,9 +745,9 @@ class WwiseProjectAnalyzerV3:
                     files_to_process.append(path)
                     print(f"   📄 添加文件: {os.path.basename(path)}")
                 else:
-                    print(f"   ⚠️ 非 .wwu 文件,跳过: {path}")
+                    print(f"   ⚠️ 非 .wwu 文件，跳过: {path}")
             else:
-                # 目录:递归查找所有 .wwu 文件
+                # 目录：递归查找所有 .wwu 文件
                 found_count = 0
                 for r, _, files in os.walk(path):
                     for f in files:
@@ -686,12 +879,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "-a", "--append", 
         action="store_true",
-        help="追加模式:将结果追加到现有文件而不是覆盖"
+        help="追加模式：将结果追加到现有文件而不是覆盖"
     )
     parser.add_argument(
         "-i", "--interactive", 
         action="store_true",
-        help="交互模式:手动输入或拖拽文件路径"
+        help="交互模式：手动输入或拖拽文件路径"
     )
     
     args = parser.parse_args()
@@ -725,12 +918,12 @@ if __name__ == "__main__":
                     if empty_count >= 2 or (empty_count >= 1 and paths):
                         break
                     if not paths:
-                        print("   💡 请至少输入一个路径,或输入 'done' 退出")
+                        print("   💡 请至少输入一个路径，或输入 'done' 退出")
                     continue
                 else:
                     empty_count = 0
                 
-                # 清理路径(去除拖拽时可能带的引号)
+                # 清理路径（去除拖拽时可能带的引号）
                 line = line.strip('"').strip("'")
                 paths.append(line)
                 
@@ -759,7 +952,7 @@ if __name__ == "__main__":
         # 询问是否追加
         append_mode = False
         if os.path.exists(output_file):
-            append_input = input(f"⚠️  文件 {output_file} 已存在,追加(a) 还是 覆盖(o)? [a/O]: ").strip().lower()
+            append_input = input(f"⚠️  文件 {output_file} 已存在，追加(a) 还是 覆盖(o)? [a/O]: ").strip().lower()
             append_mode = append_input == 'a'
         
         # 最终确认
@@ -770,7 +963,7 @@ if __name__ == "__main__":
         print(f"   模式: {'追加' if append_mode else '覆盖'}")
         print("=" * 60)
         
-        confirm = input("\n▶️  按回车开始运行,输入 'q' 取消: ").strip().lower()
+        confirm = input("\n▶️  按回车开始运行，输入 'q' 取消: ").strip().lower()
         if confirm == 'q':
             print("❌ 用户取消")
             sys.exit(0)
