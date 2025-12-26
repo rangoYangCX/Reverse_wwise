@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-【DSL 验证器】DSL Validator (V2.0 - DSL Parser V7.0 完全适配版)
-功能：验证逆向生成的 DSL 是否能被 Parser V7.0 正确解析
+[DSL 验证器]DSL Validator (V2.0 - DSL Parser V7.0 完全适配版)
+功能:验证逆向生成的 DSL 是否能被 Parser V7.0 正确解析
 
 更新日志 V2.0:
 1. [Core] 完全适配 DSL Parser V7.0 的所有语法
-2. [Feat] 多层次验证：语法 → 语义 → 依赖
+2. [Feat] 多层次验证:语法 → 语义 → 依赖
 3. [Feat] 详细的错误诊断报告
 4. [Feat] 批量验证与统计
 5. [Feat] 自动过滤无效样本
 
-验证层次：
+验证层次:
 - Level 1: 语法验证 (Parser 能否解析)
 - Level 2: 语义验证 (指令是否合理)
 - Level 3: 依赖验证 (父级/引用是否存在)
@@ -30,7 +30,7 @@ try:
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src'))
     from dsl_parser import DSLParser
 except ImportError:
-    print("⚠️ 警告: 无法导入 DSLParser，将使用内置简化版本")
+    print("⚠️ 警告: 无法导入 DSLParser,将使用内置简化版本")
     DSLParser = None
 
 
@@ -337,7 +337,7 @@ class DSLValidatorV2:
                 ]
                 # 也接受带空格的写法 (Parser 会自动纠正)
                 if obj_type not in valid_types and obj_type.replace("-", "") not in valid_types:
-                    result.warnings.append(f"非标准类型 '{obj_type}'，Parser 会尝试纠正")
+                    result.warnings.append(f"非标准类型 '{obj_type}',Parser 会尝试纠正")
             
             # 检查 2: SET_PROP 属性是否有效
             prop_match = re.match(r'SET_PROP\s+"[^"]+"\s+"([^"]+)"', line, re.IGNORECASE)
@@ -350,7 +350,7 @@ class DSLValidatorV2:
                     "Priority", "IsLoopingEnabled", "Color"
                 ]
                 if prop_name not in valid_props:
-                    result.warnings.append(f"非常规属性 '{prop_name}'，可能需要确认")
+                    result.warnings.append(f"非常规属性 '{prop_name}',可能需要确认")
             
             # 检查 3: LINK 类型是否有效
             link_match = re.match(r'LINK\s+"[^"]+"\s+TO\s+"[^"]+"\s+AS\s+"([^"]+)"', line, re.IGNORECASE)
@@ -379,7 +379,7 @@ class DSLValidatorV2:
             
             line = re.sub(r'^\d+\.\s*', '', line)
             
-            # CREATE 指令：记录创建的对象，检查父级
+            # CREATE 指令:记录创建的对象,检查父级
             create_match = re.match(r'CREATE\s+\w+\s+"([^"]+)"\s+UNDER\s+"([^"]+)"', line, re.IGNORECASE)
             if create_match:
                 obj_name, parent_name = create_match.groups()
@@ -393,7 +393,7 @@ class DSLValidatorV2:
                         f"父级 '{parent_name}' 未在上下文中找到 (对象: {obj_name})"
                     )
             
-            # LINK 指令：检查目标是否存在
+            # LINK 指令:检查目标是否存在
             link_match = re.match(r'LINK\s+"([^"]+)"\s+TO\s+"([^"]+)"', line, re.IGNORECASE)
             if link_match:
                 child_name, target_name = link_match.groups()
@@ -406,7 +406,7 @@ class DSLValidatorV2:
                         f"引用目标 '{target_name}' 可能不存在 (对象: {child_name})"
                     )
             
-            # ASSIGN 指令：检查状态/开关是否存在
+            # ASSIGN 指令:检查状态/开关是否存在
             assign_match = re.match(r'ASSIGN\s+"([^"]+)"\s+TO\s+"([^"]+)"', line, re.IGNORECASE)
             if assign_match:
                 child_name, state_name = assign_match.groups()

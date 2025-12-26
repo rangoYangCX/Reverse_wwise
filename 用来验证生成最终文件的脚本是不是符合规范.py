@@ -40,7 +40,7 @@ def analyze_file_issues(file_path):
                     
                     category = unicodedata.category(char)
                     
-                    # 判定是否为“高风险”字符
+                    # 判定是否为"高风险"字符
                     # 1. 控制字符 (Cc, Cf) - 比如零宽空格
                     # 2. 全角符号 (VS Code 经常报警 Ambiguous)
                     # 3. 各种看起来像空格但不是空格的符号
@@ -68,20 +68,20 @@ def analyze_file_issues(file_path):
                     
                     issues_found += 1
                     
-                    # 为了防止刷屏，如果发现太多问题，暂停一下
+                    # 为了防止刷屏,如果发现太多问题,暂停一下
                     if issues_found >= 20:
-                        print("... (已发现超过 20 个可疑点，停止输出以免刷屏) ...")
-                        print("建议：文件确实包含大量非标准字符，请检查以上报告的字符类型。")
+                        print("... (已发现超过 20 个可疑点,停止输出以免刷屏) ...")
+                        print("建议:文件确实包含大量非标准字符,请检查以上报告的字符类型。")
                         return
 
     except UnicodeDecodeError:
-        print("❌ 致命错误：文件甚至不是有效的 UTF-8 编码！这本身就是最大的问题。")
+        print("❌ 致命错误:文件甚至不是有效的 UTF-8 编码！这本身就是最大的问题。")
         return
 
     if issues_found == 0:
         print("✅ 检查通过！未发现明显的 Unicode 风险字符。")
-        print("如果 VS Code 依然报错，可能是 VS Code 的 'Ambiguous Characters' 设置过于敏感，")
-        print("或者它把正常的中文标点（如全角逗号）也误判了。")
+        print("如果 VS Code 依然报错,可能是 VS Code 的 'Ambiguous Characters' 设置过于敏感,")
+        print("或者它把正常的中文标点(如全角逗号)也误判了。")
     else:
         print(f"检查结束。共发现 {issues_found} 个潜在风险点。")
 

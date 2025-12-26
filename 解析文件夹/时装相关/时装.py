@@ -30,40 +30,40 @@ THEME_MAP = {
     "ChengNv": "成女体型",
     "LuoLi": "萝莉体型",
     "XiaoTong": "正太/小童体型",
-    "JiuSeLu": "【九色鹿】主题",
-    "LiBai": "【李白】主题",
-    "BiYao": "【碧瑶】主题",
-    "GuiLi": "【鬼厉】主题",
-    "ZengShuShu": "【曾书书】主题",
-    "LuXueQi": "【陆雪琪】主题",
-    "JinWu": "【金乌】主题",
-    "NeZha": "【哪吒】主题",
-    "RuiHe": "【瑞鹤】主题",
-    "WuShe": "【舞狮/舞蛇】主题",
-    "ZhongBuQiao": "【钟不敲/特定时装】",
-    "ZiTengHua": "【紫藤花】主题"
+    "JiuSeLu": "[九色鹿]主题",
+    "LiBai": "[李白]主题",
+    "BiYao": "[碧瑶]主题",
+    "GuiLi": "[鬼厉]主题",
+    "ZengShuShu": "[曾书书]主题",
+    "LuXueQi": "[陆雪琪]主题",
+    "JinWu": "[金乌]主题",
+    "NeZha": "[哪吒]主题",
+    "RuiHe": "[瑞鹤]主题",
+    "WuShe": "[舞狮/舞蛇]主题",
+    "ZhongBuQiao": "[钟不敲/特定时装]",
+    "ZiTengHua": "[紫藤花]主题"
 }
 
 # 4. 设计意图库 (针对线性与UI)
 INTENTS = {
     "Cinematic": [
-        "配合镜头运动，强调画面的冲击力。",
-        "作为线性动画的音频轨道，需严格对齐画面。",
-        "提升演出的沉浸感，细节要丰富。"
+        "配合镜头运动,强调画面的冲击力。",
+        "作为线性动画的音频轨道,需严格对齐画面。",
+        "提升演出的沉浸感,细节要丰富。"
     ],
     "Music": [
-        "这是配乐层，负责烘托整体情绪。",
+        "这是配乐层,负责烘托整体情绪。",
         "注意与画面的情绪起伏保持同步。",
-        "作为BGM，动态范围控制要得当。"
+        "作为BGM,动态范围控制要得当。"
     ],
     "UI_Feedback": [
         "增强界面的交互反馈感。",
         "给玩家明确的结算爽感。",
-        "短促有力，强调结果展示。"
+        "短促有力,强调结果展示。"
     ],
     "Generic": [
         "标准音频资源配置。",
-        "按需配置，保证基础听感。"
+        "按需配置,保证基础听感。"
     ]
 }
 
@@ -72,13 +72,13 @@ TECH_PHRASES = {
     "routing_sfx": ["路由至音效总线 `{bus}`。", "发送给 `{bus}` SFX层。", "走 `{bus}` 通道。"],
     "routing_music": ["路由至音乐总线 `{bus}`。", "作为BGM发送给 `{bus}`。", "归类到 `{bus}` 音乐层。"],
     "override_out": [
-        "**注意**：勾选 'Override Output'，切断父级继承，单独指定路由。",
-        "开启 Output 重写，因为这里的路由逻辑比较特殊。",
-        "强制指定输出总线，不受父级控制。"
+        "**注意**:勾选 'Override Output',切断父级继承,单独指定路由。",
+        "开启 Output 重写,因为这里的路由逻辑比较特殊。",
+        "强制指定输出总线,不受父级控制。"
     ],
     "color_mark": [
         "标个 Color {c} 方便分类。",
-        "设置颜色为 {c}，保持工程整洁。",
+        "设置颜色为 {c},保持工程整洁。",
         "Color 设为 {c}。"
     ]
 }
@@ -188,13 +188,13 @@ def generate_natural_language(data):
     # 4. 随机模板生成
     templates = [
         # 模板 A: 任务导向
-        f"任务：制作 {full_desc} ({asset_ref})。\n设计意图：{intent}\n执行步骤：{' '.join(tech_actions)}",
+        f"任务:制作 {full_desc} ({asset_ref})。\n设计意图:{intent}\n执行步骤:{' '.join(tech_actions)}",
         
         # 模板 B: 制作人语气
-        f"处理一下 {asset_ref}，这是{full_desc}的内容。\n要点：{intent}\n技术上：\n- " + "\n- ".join(tech_actions),
+        f"处理一下 {asset_ref},这是{full_desc}的内容。\n要点:{intent}\n技术上:\n- " + "\n- ".join(tech_actions),
         
         # 模板 C: 简报风格
-        f"【配置】{full_desc}\n资源ID：{asset_ref}\n参数配置：{' '.join(tech_actions)} (目标是{intent})"
+        f"[配置]{full_desc}\n资源ID:{asset_ref}\n参数配置:{' '.join(tech_actions)} (目标是{intent})"
     ]
     
     return random.choice(templates)

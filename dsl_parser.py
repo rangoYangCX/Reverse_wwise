@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-【逻辑引擎】DSL 解析器 (V7.0 - 功能扩展版)
-功能：将 DSL (Domain Specific Language) 翻译为 WAAPI JSON 执行计划。
-维护者：NeuroWwise Architecture Team
+[逻辑引擎]DSL 解析器 (V7.2 - 父子同名修复版)
+功能:将 DSL (Domain Specific Language) 翻译为 WAAPI JSON 执行计划。
+维护者:NeuroWwise Architecture Team
 
 版本历史:
+V7.2:   [Critical Fix] 修复父子同名问题 - 优先返回容器类型作为父对象
+        [Fix] _resolve_via_registry 和 get_guid 都增加容器优先逻辑
+
 V7.0:   [Feat] 新增 ADD_ACTION 语法 (Play/Stop/Pause/Resume/SetSwitch/SetState)
         [Feat] 新增 IMPORT_AUDIO 语法 (音频资源导入)
         [Feat] 新增 SET_RTPC_CURVE 语法 (RTPC 曲线设置)
@@ -14,7 +17,7 @@ V7.0:   [Feat] 新增 ADD_ACTION 语法 (Play/Stop/Pause/Resume/SetSwitch/SetSta
 
 V6.5:   [Fix] 物理文件夹穿透 (Physical Folder Penetration)。
 V6.4:   [Fix] 智能降级策略 (Smart Downgrade)。
-V6.3:   [Fix] 针对 WorkUnit 创建，将 onNameConflict 策略改为 "rename"。
+V6.3:   [Fix] 针对 WorkUnit 创建,将 onNameConflict 策略改为 "rename"。
 V6.1:   [Fix] Attenuation 属性修正 (OverridePositioning)。
 V6.0:   [Feat] Registry 协同完全体。
 """
@@ -115,12 +118,12 @@ class DSLParser:
         }
 
     def set_registry(self, registry):
-        """ [V6.0] 注入 Registry 实例，用于增强路径解析能力 """
+        """ [V6.0] 注入 Registry 实例,用于增强路径解析能力 """
         self.registry = registry
 
     def parse(self, dsl_lines):
         """
-        【核心解析函数】
+        [核心解析函数]
         输入: DSL 代码列表 (list of strings)
         输出: WAAPI 执行计划 (list of dicts)
         """
@@ -148,7 +151,7 @@ class DSLParser:
 
     def _parse_single_line(self, line, line_idx, current_plan):
         """
-        [V7.0 Refactored] 解析单行 DSL，返回生成的 plan 步骤列表
+        [V7.0 Refactored] 解析单行 DSL,返回生成的 plan 步骤列表
         """
         steps = []
         
@@ -303,7 +306,7 @@ class DSLParser:
             }]
 
         # ------------------------------------------------------
-        # 容错处理：未知指令
+        # 容错处理:未知指令
         # ------------------------------------------------------
         if line and not line.startswith(('<', '>', '```', '---', '===')):
             self.parse_warnings.append(f"Unrecognized instruction: {line[:50]}...")
@@ -338,7 +341,8 @@ class DSLParser:
         if obj_type in asset_types and self.registry:
             parent_guid = parent
             if not parent.startswith("{"):
-                parent_guid = self.registry.get_guid(parent) if self.registry else None
+                # [V7.2 Fix] 使用 prefer_container=True 解决父子同名问题
+                parent_guid = self.registry.get_guid(parent, prefer_container=True) if self.registry else None
             
             if parent_guid and hasattr(self.registry, 'is_physical_folder') and self.registry.is_physical_folder(parent_guid):
                 wu_name = f"{raw_parent}_Content"
@@ -392,19 +396,40 @@ class DSLParser:
         # 映射引用类型 (例如 "Bus" -> "OutputBus")
         w_ref = self.ref_map.get(link_type, link_type)
         
-        # [V6.0] LINK 目标的智能解析
-        if not target.startswith(("\\", "$", "{")):
-            waql_type = None
-            if w_ref == "Attenuation": waql_type = "Attenuation"
-            elif w_ref == "OutputBus": waql_type = "Bus"
-            elif w_ref in ["UserAuxSend0", "UserAuxSend1"]: waql_type = "AuxBus"
-            elif w_ref.startswith("Effect"): waql_type = "Effect"
-            elif w_ref == "SwitchGroupOrStateGroup": waql_type = "SwitchGroup,StateGroup"
-            elif w_ref == "StateGroup": waql_type = "StateGroup"
-            elif w_ref == "GameParameter": waql_type = "GameParameter"
-            
-            if waql_type:
-                target = f'$ from type {waql_type} where name="{target}"'
+        # ==========================================================
+        # [V7.1 Fix] LINK 目标的智能解析
+        # 重要:setReference 不支持 WAQL！只支持 GUID/Path/Name
+        # 策略:
+        # 1. 如果是 GUID 或绝对路径,直接使用
+        # 2. 如果是名称,尝试通过 Registry 解析为路径
+        # 3. 如果 Registry 找不到,保留名称(让 Driver 去查找)
+        # ==========================================================
+        
+        resolved_target = target
+        
+        if not target.startswith(("\\", "{", "$")):
+            # 尝试通过 Registry 解析
+            if self.registry:
+                # 根据引用类型,确定目标层级
+                target_hierarchy = None
+                if w_ref == "OutputBus":
+                    target_hierarchy = "Master-Mixer Hierarchy"
+                elif w_ref == "Attenuation":
+                    target_hierarchy = "Attenuations"
+                elif w_ref in ["UserAuxSend0", "UserAuxSend1"]:
+                    target_hierarchy = "Master-Mixer Hierarchy"
+                elif w_ref == "SwitchGroupOrStateGroup":
+                    target_hierarchy = "Switches"  # 优先 Switches
+                elif w_ref == "StateGroup":
+                    target_hierarchy = "States"
+                elif w_ref == "GameParameter":
+                    target_hierarchy = "Game Parameters"
+                
+                # 查找匹配的路径
+                found_path = self._find_reference_path(target, target_hierarchy)
+                if found_path:
+                    resolved_target = found_path
+                # 如果找不到,保留原始名称(Driver 会尝试查找)
 
         # [V5.6] 自动处理 OutputBus 的 Override 逻辑
         if w_ref == "OutputBus":
@@ -433,11 +458,40 @@ class DSLParser:
             "args": {
                 "object": child,
                 "reference": w_ref,
-                "value": target
+                "value": resolved_target
             }
         })
         
         return steps
+
+    def _find_reference_path(self, name: str, hierarchy_hint: str = None) -> str:
+        """
+        [V7.1 New] 通过 Registry 查找引用目标的路径
+        
+        Args:
+            name: 目标名称
+            hierarchy_hint: 层级提示 (如 "Master-Mixer Hierarchy")
+        
+        Returns:
+            找到的路径,或 None
+        """
+        if not self.registry:
+            return None
+        
+        # 从 Registry 获取候选路径
+        candidates = self.registry.name_index.get(name, [])
+        
+        if not candidates:
+            return None
+        
+        # 如果有层级提示,优先匹配
+        if hierarchy_hint:
+            for path in candidates:
+                if hierarchy_hint in path:
+                    return path
+        
+        # 没有提示或没找到匹配,返回第一个
+        return candidates[0] if candidates else None
 
     def _handle_add_action(self, event_name, action_type, target, extra=None):
         """[V7.0 New] 处理 ADD_ACTION 指令"""
@@ -488,9 +542,9 @@ class DSLParser:
         })
         
         # 3. 创建 Play Action
-        # 注意：Wwise Event 的 Action 是特殊结构
+        # 注意:Wwise Event 的 Action 是特殊结构
         # 使用 setReference 来设置 Target 可能更可靠
-        # 这里简化处理，实际可能需要更复杂的 API 调用
+        # 这里简化处理,实际可能需要更复杂的 API 调用
         steps.append({
             "action": "ak.wwise.core.object.create",
             "args": {
@@ -509,7 +563,7 @@ class DSLParser:
         """[V7.0 New] 处理 IMPORT_AUDIO 指令"""
         import os
         
-        # 如果没有指定名称，从文件路径提取
+        # 如果没有指定名称,从文件路径提取
         if not sound_name:
             sound_name = os.path.splitext(os.path.basename(file_path))[0]
         
@@ -577,6 +631,7 @@ class DSLParser:
     def _resolve_via_registry(self, name, obj_type):
         """
         [V6.0] 通过 Registry 查找最佳匹配路径
+        [V7.2 Fix] 优先返回容器类型,解决父子同名问题
         """
         if not self.registry:
             return None
@@ -611,13 +666,28 @@ class DSLParser:
         if len(filtered) == 1:
             return filtered[0]
         elif len(filtered) > 1:
-            return filtered[-1]
+            # [V7.2 Fix] 优先返回容器类型
+            container_types = {
+                "ActorMixer", "RandomSequenceContainer", "SwitchContainer", 
+                "BlendContainer", "Folder", "WorkUnit", "Bus", "AuxBus"
+            }
+            
+            # 从后往前找容器类型
+            for path in reversed(filtered):
+                guid = self.registry.path_map.get(path)
+                if guid:
+                    path_obj_type = self.registry.type_map.get(guid, "")
+                    if path_obj_type in container_types:
+                        return path
+            
+            # 如果没找到容器,返回第一个(最早创建的)
+            return filtered[0]
         return None
 
     def _resolve_parent_strategy(self, p, child_type=""):
         """
-        【路径导航仪】(The Navigation Strategy)
-        功能：解决 "Default Work Unit" 到底是在 Actor-Mixer 还是 Events 里的问题。
+        [路径导航仪](The Navigation Strategy)
+        功能:解决 "Default Work Unit" 到底是在 Actor-Mixer 还是 Events 里的问题。
         """
         p_low = p.lower()
         child_type = self.type_fix.get(child_type, child_type)
@@ -682,7 +752,7 @@ class DSLParser:
 
     def _parse_val(self, v):
         """
-        【数值清洗器】
+        [数值清洗器]
         """
         s = str(v).strip()
         
@@ -706,7 +776,7 @@ class DSLParser:
 
     def validate_plan(self, plan):
         """
-        【计划校验器】
+        [计划校验器]
         """
         if not plan:
             return False, "Plan is empty"

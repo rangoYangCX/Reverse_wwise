@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 MMO Engineering Brain - Ultimate One-Click Script
-集成：数据清洗工厂 + 资深设计师重写 + 模型训练 + HF自动交付
+集成:数据清洗工厂 + 资深设计师重写 + 模型训练 + HF自动交付
 """
 
 import os
@@ -16,14 +16,14 @@ import re
 import unicodedata
 import numpy as np
 
-# --- 🛠️ 0. 核心修复：注入 psutil (必须在所有 import 之前) ---
+# --- 🛠️ 0. 核心修复:注入 psutil (必须在所有 import 之前) ---
 try:
     import psutil
     import builtins
     builtins.psutil = psutil
-    print("✅ 环境自检：psutil 注入成功。")
+    print("✅ 环境自检:psutil 注入成功。")
 except ImportError:
-    print("⚠️ 环境自检：正在预装 psutil...")
+    print("⚠️ 环境自检:正在预装 psutil...")
     subprocess.check_call("pip install psutil", shell=True)
     import psutil
     import builtins
@@ -42,40 +42,40 @@ HF_TOKEN = "HF_TOKEN"
 HF_REPO_NAME = "chengxuanyyy/Wwise-Engineering-Brain"
 QUANTIZATION_METHOD = "q4_k_m"
 
-# --- 2. 数据工厂：清洗与重写模块 ---
+# --- 2. 数据工厂:清洗与重写模块 ---
 # (这里集成了之前的 generate_action_data.py 逻辑)
 
 DESIGNER_PHRASES = {
     "footstep_system_setup": [
-        "搭建一套标准的主角脚步声逻辑，根节点叫 {name}，记得把定位(Positioning)覆盖打开。",
-        "给主角整一套脚步声架构 {name}，挂在 {parent} 下面。衰减要设好，走 OutputBus 路由。",
-        "初始化主角的脚步系统 {name}。技术要求：开启 OverridePositioning，并关联到材质 Switch Group。"
+        "搭建一套标准的主角脚步声逻辑,根节点叫 {name},记得把定位(Positioning)覆盖打开。",
+        "给主角整一套脚步声架构 {name},挂在 {parent} 下面。衰减要设好,走 OutputBus 路由。",
+        "初始化主角的脚步系统 {name}。技术要求:开启 OverridePositioning,并关联到材质 Switch Group。"
     ],
     "footstep_material_switch": [
         "现在处理 {material} 材质的脚步声逻辑。在 {parent} 下建个 SwitchContainer 叫 {name}。",
-        "新增一种地表材质：{material}。创建对应的容器 {name}，别忘了把 Switch Group 连上。",
-        "配置 {material} 材质的 Switch 逻辑，容器命名为 {name}，信号走 HostPlayerSkill 总线。"
+        "新增一种地表材质:{material}。创建对应的容器 {name},别忘了把 Switch Group 连上。",
+        "配置 {material} 材质的 Switch 逻辑,容器命名为 {name},信号走 HostPlayerSkill 总线。"
     ],
     "footstep_sfx_assets": [
-        "导入一批 {material} 的脚步声素材 {name}，要那种{adjective}的感觉。",
-        "填充 {parent} 容器的内容，创建一组随机脚步声 {name}。听感要{adjective}一点。",
-        "把美术给的 {material} 脚步声 {name} 导进去，放到 {parent} 下面，做成 Random 容器。"
+        "导入一批 {material} 的脚步声素材 {name},要那种{adjective}的感觉。",
+        "填充 {parent} 容器的内容,创建一组随机脚步声 {name}。听感要{adjective}一点。",
+        "把美术给的 {material} 脚步声 {name} 导进去,放到 {parent} 下面,做成 Random 容器。"
     ],
     "default": [
-        "创建 {type} 对象 {name}，父级是 {parent}。",
+        "创建 {type} 对象 {name},父级是 {parent}。",
         "在 {parent} 节点下新增 {name}。",
-        "实现 {name} 的逻辑配置，类型为 {type}。"
+        "实现 {name} 的逻辑配置,类型为 {type}。"
     ]
-    # ... (为了脚本简洁，这里保留核心话术，模型会自动举一反三)
+    # ... (为了脚本简洁,这里保留核心话术,模型会自动举一反三)
 }
 ADJECTIVES = ["湿漉漉", "清脆", "厚重", "沉闷", "尖锐", "有弹性", "拖沓", "利落", "带金属感"]
 
 def nuclear_clean_text(text):
-    """核弹级清洗：去除全角字符和乱码"""
+    """核弹级清洗:去除全角字符和乱码"""
     if not text: return ""
     char_map = {
-        '“': '"', '”': '"', '‘': "'", '’': "'", '：': ':', '（': '(', '）': ')', 
-        '，': ',', '；': ';', '　': ' ', '。': '.', '、': ',', '？': '?', '！': '!', '【': '[', '】': ']'
+        '"': '"', '"': '"', ''': "'", ''': "'", ':': ':', '(': '(', ')': ')', 
+        ',': ',', ';': ';', ' ': ' ', '。': '.', '、': ',', '？': '?', '！': '!', '[': '[', ']': ']'
     }
     for k, v in char_map.items(): text = text.replace(k, v)
     text = unicodedata.normalize('NFKC', text)
@@ -106,9 +106,9 @@ def analyze_wwise_code(code_str):
     return "default", params
 
 def prepare_data():
-    print(f"\n🏭 启动数据工厂：正在清洗并重写 {RAW_DATA_FILE}...")
+    print(f"\n🏭 启动数据工厂:正在清洗并重写 {RAW_DATA_FILE}...")
     if not os.path.exists(RAW_DATA_FILE):
-        sys.exit(f"❌ 错误：找不到 {RAW_DATA_FILE}，请先上传！")
+        sys.exit(f"❌ 错误:找不到 {RAW_DATA_FILE},请先上传！")
     
     count = 0
     with open(CLEAN_DATA_FILE, 'w', encoding='utf-8') as outfile:
@@ -126,7 +126,7 @@ def prepare_data():
                     templates = DESIGNER_PHRASES.get(intent, DESIGNER_PHRASES["default"])
                     new_instruction = random.choice(templates).format(**params)
                     
-                    # 再次清洗生成的内容，确保万无一失
+                    # 再次清洗生成的内容,确保万无一失
                     data["instruction"] = nuclear_clean_text(new_instruction)
                     data["input"] = nuclear_clean_text(f"工程上下文: {intent} | 对象: {data.get('meta', {}).get('root_type', 'Object')}")
                     
@@ -166,7 +166,7 @@ try:
     from datasets import Dataset
     from huggingface_hub import HfApi
 except ImportError:
-    sys.exit("❌ 依赖安装失败，请重启运行时。")
+    sys.exit("❌ 依赖安装失败,请重启运行时。")
 
 # 加载模型
 model_name = "Qwen/Qwen2.5-Coder-7B-Instruct"
@@ -232,8 +232,8 @@ trainer = SFTTrainer(
         per_device_train_batch_size = 2,
         gradient_accumulation_steps = 4,
         warmup_steps = 20,          # 增加预热
-        max_steps = 1500,           # 关键调整：提升到 1500 步以适应大量数据
-        learning_rate = 1e-4,       # 关键调整：降低学习率，防止过拟合
+        max_steps = 1500,           # 关键调整:提升到 1500 步以适应大量数据
+        learning_rate = 1e-4,       # 关键调整:降低学习率,防止过拟合
         fp16 = not is_bfloat16_supported(),
         bf16 = is_bfloat16_supported(),
         logging_steps = 5,
@@ -250,7 +250,7 @@ trainer.train()
 
 # --- 5. 交付流水线 ---
 print("\n" + "="*50)
-print("🏁 训练完成，启动自动化交付...")
+print("🏁 训练完成,启动自动化交付...")
 print("="*50)
 
 # 上传 LoRA
