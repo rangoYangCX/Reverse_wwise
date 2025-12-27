@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-【指令生成器】Instruction Generator V1.1
-功能：为 DSL 训练数据生成专业的自然语言指令
+[指令生成器]Instruction Generator V1.1
+功能:为 DSL 训练数据生成专业的自然语言指令
 模拟资深游戏音频设计师 / 制作人的口吻
 
 更新 V1.1:
@@ -9,13 +9,13 @@
 2. [Feat] 支持 GameParameter RTPC参数指令生成
 3. [Feat] 支持 SwitchGroup 条件切换指令生成
 4. [Feat] 支持 StateGroup 全局状态指令生成
-5. [Feat] 智能猜测用途（根据名称和内容）
+5. [Feat] 智能猜测用途(根据名称和内容)
 
-特点：
-1. 随机化表达方式，避免重复
+特点:
+1. 随机化表达方式,避免重复
 2. 专业术语与口语化表达混合
-3. 覆盖多种业务场景（技能、BOSS、小怪、动作、参数等）
-4. 支持中英文混合（行业习惯）
+3. 覆盖多种业务场景(技能、BOSS、小怪、动作、参数等)
+4. 支持中英文混合(行业习惯)
 
 作者: NeuroWwise Team
 版本: V1.1
@@ -178,7 +178,7 @@ class VocabularyBank:
 # =============================================================================
 
 class NameAnalyzer:
-    """分析 Wwise 对象名称，推断业务场景"""
+    """分析 Wwise 对象名称,推断业务场景"""
     
     # 关键词映射
     KEYWORD_PATTERNS = {
@@ -236,7 +236,7 @@ class NameAnalyzer:
     
     @classmethod
     def analyze(cls, name: str, source: str = "") -> Dict[str, bool]:
-        """分析名称，返回特征标记"""
+        """分析名称,返回特征标记"""
         features = {}
         combined = f"{name} {source}"
         
@@ -288,7 +288,7 @@ class InstructionGenerator:
         commands = meta.get("commands", {})
         depth = meta.get("depth", 0)
         
-        # [V1.1] 优先按 root_type 分发（参数类型）
+        # [V1.1] 优先按 root_type 分发(参数类型)
         if root_type == "Attenuation":
             return self._generate_attenuation_instruction(root_name, dsl_output, meta)
         elif root_type == "GameParameter":
@@ -298,7 +298,7 @@ class InstructionGenerator:
         elif root_type == "StateGroup":
             return self._generate_state_group_instruction(root_name, dsl_output, meta)
         
-        # 原有逻辑：按场景分发
+        # 原有逻辑:按场景分发
         context_type = self.analyzer.get_context_type(root_name, source)
         features = self.analyzer.analyze(root_name, source)
         
@@ -334,16 +334,16 @@ class InstructionGenerator:
         templates = [
             f"{action}{player}{skill_name}技能的{structure}",
             f"帮我{action}一套{player}使用{skill_name}时的{structure}",
-            f"需要{action}{skill_name}这个技能的{structure}，是{player}用的",
-            f"{player}的{skill_name}技能，帮我{action}一下{structure}",
+            f"需要{action}{skill_name}这个技能的{structure},是{player}用的",
+            f"{player}的{skill_name}技能,帮我{action}一下{structure}",
             f"给{player}{action}一个{skill_name}的{structure}",
             f"我要给{player}{action}{skill_name}技能的{structure}",
-            f"{class_info}的{skill_name}技能，需要{action}{structure}",
+            f"{class_info}的{skill_name}技能,需要{action}{structure}",
             f"帮我把{player}的{skill_name}技能{structure}搭起来",
-            f"{skill_name}这个技能的音效，帮{player}{action}一下",
+            f"{skill_name}这个技能的音效,帮{player}{action}一下",
             f"做一套{player}{skill_name}的{structure}",
             f"{action}一下{class_info}{skill_name}技能的声音层级",
-            f"{player}释放{skill_name}时的音效，需要{action}结构"
+            f"{player}释放{skill_name}时的音效,需要{action}结构"
         ]
         
         instruction = random.choice(templates)
@@ -364,12 +364,12 @@ class InstructionGenerator:
             f"{action}{boss_ref}「{boss_name}」的技能音效结构",
             f"帮我{action}副本{boss_ref}{boss_name}的声音层级",
             f"需要给{boss_name}这个{boss_ref}{action}音效架构",
-            f"{boss_ref}战斗中{boss_name}的音效，帮我{action}一下",
+            f"{boss_ref}战斗中{boss_name}的音效,帮我{action}一下",
             f"给{boss_name}{boss_ref}{action}一套完整的SFX结构",
-            f"副本里{boss_name}{boss_ref}的技能音效，需要{action}",
+            f"副本里{boss_name}{boss_ref}的技能音效,需要{action}",
             f"{action}一套{boss_name}的{boss_ref}战音效结构",
             f"团队副本{boss_ref}{boss_name}需要{action}音效层级",
-            f"{boss_name}的{boss_ref}战，帮我{action}音效架构",
+            f"{boss_name}的{boss_ref}战,帮我{action}音效架构",
             f"这个{boss_ref}{boss_name}的技能音效要{action}"
         ]
         
@@ -392,7 +392,7 @@ class InstructionGenerator:
             f"帮我给{monster_name}这个{monster_ref}{action}声音层级",
             f"{monster_ref}{monster_name}的技能音效需要{action}",
             f"需要{action}一套{monster_name}{monster_ref}用的SFX架构",
-            f"野外{monster_ref}{monster_name}的音效，帮我{action}",
+            f"野外{monster_ref}{monster_name}的音效,帮我{action}",
             f"给场景{monster_ref}{monster_name}{action}音效层级",
             f"{monster_name}这个{monster_ref}的声音结构要{action}",
             f"做一套{monster_name}{monster_ref}的音效"
@@ -417,10 +417,10 @@ class InstructionGenerator:
                 f"{action}一套支持多材质切换的脚步声系统",
                 f"帮我{action}{player}在不同地面材质上的脚步音效结构",
                 f"需要{action}能区分草地、石头、木头等材质的脚步声层级",
-                f"{player}的脚步声要根据材质变化，帮我{action}这套结构",
+                f"{player}的脚步声要根据材质变化,帮我{action}这套结构",
                 f"给{player}{action}一个带材质切换的Footstep系统",
-                f"{action}多材质响应的脚步声架构，要区分不同地面",
-                f"角色在不同地面走路的脚步声，需要{action}",
+                f"{action}多材质响应的脚步声架构,要区分不同地面",
+                f"角色在不同地面走路的脚步声,需要{action}",
                 f"做一套能切换材质的脚步声系统"
             ]
             instruction = random.choice(material_templates)
@@ -429,7 +429,7 @@ class InstructionGenerator:
                 f"{action}{player}的脚步声音效结构",
                 f"帮我{action}一套脚步声的层级架构",
                 f"需要{action}角色移动的脚步音效",
-                f"{player}行走/跑步的脚步声，帮我{action}",
+                f"{player}行走/跑步的脚步声,帮我{action}",
                 f"给角色{action}一套Footstep音效结构",
                 f"做一套脚步声的音效层级",
                 f"{player}的移动脚步声需要{action}"
@@ -454,8 +454,8 @@ class InstructionGenerator:
             f"帮我{action}坐骑{mount_name}的声音层级",
             f"{mount_name}坐骑的移动音效需要{action}",
             f"需要给{mount_name}坐骑{action}一套SFX架构",
-            f"{player}的{mount_name}坐骑，帮我{action}音效结构",
-            f"骑乘系统里{mount_name}的音效，需要{action}",
+            f"{player}的{mount_name}坐骑,帮我{action}音效结构",
+            f"骑乘系统里{mount_name}的音效,需要{action}",
             f"做一套{mount_name}坐骑的音效",
             f"{mount_name}这个坐骑的声音层级要{action}"
         ]
@@ -488,7 +488,7 @@ class InstructionGenerator:
         return instruction
 
     # =========================================================================
-    # V1.1 新增：参数类型指令生成
+    # V1.1 新增:参数类型指令生成
     # =========================================================================
     
     def _generate_attenuation_instruction(
@@ -512,14 +512,14 @@ class InstructionGenerator:
         
         # 模板
         templates = [
-            f"{action}一个{usage_hint}的3D衰减曲线，最大距离{radius}米",
-            f"帮我{action}{name}的Attenuation，用于{usage_hint}",
+            f"{action}一个{usage_hint}的3D衰减曲线,最大距离{radius}米",
+            f"帮我{action}{name}的Attenuation,用于{usage_hint}",
             f"需要{action}一套{usage_hint}的距离衰减设置",
-            f"给{usage_hint}{action}一个衰减配置，范围{radius}",
+            f"给{usage_hint}{action}一个衰减配置,范围{radius}",
             f"{action}{usage_hint}用的3D空间衰减曲线",
-            f"做一个{usage_hint}的Attenuation，衰减距离{radius}",
+            f"做一个{usage_hint}的Attenuation,衰减距离{radius}",
             f"{usage_hint}的声音需要{action}衰减曲线",
-            f"帮{usage_hint}配置3D距离衰减，最远{radius}米",
+            f"帮{usage_hint}配置3D距离衰减,最远{radius}米",
         ]
         
         instruction = random.choice(templates)
@@ -534,7 +534,7 @@ class InstructionGenerator:
             curve_features.append(random.choice(["空间扩散", "Spread曲线", "近处宽远处窄"]))
         
         if curve_features and random.random() > 0.3:
-            connector = random.choice(["，要", "，需要", "，包含"])
+            connector = random.choice([",要", ",需要", ",包含"])
             instruction += connector + "、".join(random.sample(curve_features, min(2, len(curve_features))))
         
         return instruction
@@ -567,7 +567,7 @@ class InstructionGenerator:
             f"需要{action}一个{usage_hint}用的游戏参数",
             f"给{usage_hint}{action}一个RTPC控制参数",
             f"{action}{usage_hint}相关的GameParameter",
-            f"做一个{usage_hint}的参数，范围{min_val}到{max_val}",
+            f"做一个{usage_hint}的参数,范围{min_val}到{max_val}",
             f"{usage_hint}需要{action}一个控制参数",
             f"帮{usage_hint}配置RTPC参数{name}",
         ]
@@ -584,7 +584,7 @@ class InstructionGenerator:
             param_features.append(f"范围{min_val}~{max_val}")
         
         if param_features and random.random() > 0.4:
-            connector = random.choice(["，", "，要", "，需要"])
+            connector = random.choice([",", ",要", ",需要"])
             instruction += connector + "、".join(random.sample(param_features, min(2, len(param_features))))
         
         return instruction
@@ -609,9 +609,9 @@ class InstructionGenerator:
             f"需要{action}一个{usage_hint}用的条件切换",
             f"给{usage_hint}{action}一组Switch状态",
             f"{action}{usage_hint}相关的切换逻辑",
-            f"做一个{usage_hint}的SwitchGroup，{switch_count}个状态",
+            f"做一个{usage_hint}的SwitchGroup,{switch_count}个状态",
             f"{usage_hint}需要{action}切换组来区分",
-            f"帮{usage_hint}配置Switch切换，包含{switch_count}个选项",
+            f"帮{usage_hint}配置Switch切换,包含{switch_count}个选项",
         ]
         
         instruction = random.choice(templates)
@@ -619,7 +619,7 @@ class InstructionGenerator:
         # 添加状态示例
         if switches and random.random() > 0.5:
             sample_switches = random.sample(switches, min(3, len(switches)))
-            instruction += f"，包括{'/'.join(sample_switches)}等状态"
+            instruction += f",包括{'/'.join(sample_switches)}等状态"
         
         return instruction
     
@@ -643,9 +643,9 @@ class InstructionGenerator:
             f"需要{action}一个{usage_hint}用的全局状态",
             f"给{usage_hint}{action}一组State",
             f"{action}{usage_hint}相关的状态切换",
-            f"做一个{usage_hint}的StateGroup，{state_count}种状态",
+            f"做一个{usage_hint}的StateGroup,{state_count}种状态",
             f"{usage_hint}需要{action}状态组来控制",
-            f"帮{usage_hint}配置State状态，包含{state_count}个选项",
+            f"帮{usage_hint}配置State状态,包含{state_count}个选项",
         ]
         
         instruction = random.choice(templates)
@@ -653,12 +653,12 @@ class InstructionGenerator:
         # 添加状态示例
         if states and random.random() > 0.5:
             sample_states = random.sample(states, min(3, len(states)))
-            instruction += f"，有{'/'.join(sample_states)}这些状态"
+            instruction += f",有{'/'.join(sample_states)}这些状态"
         
         return instruction
     
     # =========================================================================
-    # 辅助方法：猜测用途
+    # 辅助方法:猜测用途
     # =========================================================================
     
     def _guess_attenuation_usage(self, name: str) -> str:
@@ -797,7 +797,7 @@ class InstructionGenerator:
         
         if extras:
             selected = random.sample(extras, min(len(extras), random.randint(1, 2)))
-            connector = random.choice(["，要支持", "，需要", "，包含", "，带上", "，加上"])
+            connector = random.choice([",要支持", ",需要", ",包含", ",带上", ",加上"])
             return connector + "、".join(selected)
         
         return ""
@@ -856,7 +856,7 @@ def process_jsonl(
     output_path: str,
     style: str = "professional"
 ) -> Tuple[int, int]:
-    """处理 JSONL 文件，为每条记录生成 instruction"""
+    """处理 JSONL 文件,为每条记录生成 instruction"""
     
     generator = InstructionGenerator(style=style)
     success_count = 0
@@ -907,7 +907,7 @@ def main():
     parser.add_argument("--style", choices=["professional", "casual", "mixed"],
                         default="professional", help="生成风格")
     parser.add_argument("--preview", action="store_true", 
-                        help="预览模式：只显示前10条生成结果")
+                        help="预览模式:只显示前10条生成结果")
     
     args = parser.parse_args()
     

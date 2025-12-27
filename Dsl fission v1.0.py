@@ -1,26 +1,26 @@
 # -*- coding: utf-8 -*-
 """
-【样本裂变器】DSL Sample Fission V1.1
-功能：基于现有 DSL 样本进行合法裂变，扩充训练数据量
+[样本裂变器]DSL Sample Fission V1.1
+功能:基于现有 DSL 样本进行合法裂变,扩充训练数据量
 
 更新 V1.1:
-1. [Feat] 支持 Attenuation 专用裂变（曲线点微调、RadiusMax 变化）
-2. [Feat] 支持 GameParameter 专用裂变（范围微调）
-3. [Feat] 支持 SwitchGroup 专用裂变（增减 Switch）
-4. [Feat] 支持 StateGroup 专用裂变（增减 State）
+1. [Feat] 支持 Attenuation 专用裂变(曲线点微调、RadiusMax 变化)
+2. [Feat] 支持 GameParameter 专用裂变(范围微调)
+3. [Feat] 支持 SwitchGroup 专用裂变(增减 Switch)
+4. [Feat] 支持 StateGroup 专用裂变(增减 State)
 5. [Feat] 自动识别类型并选择最佳裂变策略
 
-核心原则：
-1. 参数值必须基于真实存在的值（从现有数据中提取）
-2. 命名可以变化（组合、替换前后缀）
-3. 结构可以简化或重组（但必须保持语法正确）
+核心原则:
+1. 参数值必须基于真实存在的值(从现有数据中提取)
+2. 命名可以变化(组合、替换前后缀)
+3. 结构可以简化或重组(但必须保持语法正确)
 4. 不能凭空捏造不存在的参数值
 
-裂变策略：
+裂变策略:
 - Simple: 仅改名、微调数值
 - Medium: 结构简化、子集提取
 - Advanced: 组合拼接、参数交叉
-- Auto: 智能选择（根据类型自动选择最佳策略）
+- Auto: 智能选择(根据类型自动选择最佳策略)
 
 作者: NeuroWwise Team
 版本: V1.1
@@ -45,27 +45,27 @@ from dataclasses import dataclass, field
 class ParameterPool:
     """参数池 - 存储所有合法的参数值"""
     
-    # 引用目标（Bus, Attenuation, Conversion 等）
+    # 引用目标(Bus, Attenuation, Conversion 等)
     buses: Set[str] = field(default_factory=set)
     attenuations: Set[str] = field(default_factory=set)
     conversions: Set[str] = field(default_factory=set)
     switch_groups: Set[str] = field(default_factory=set)
     state_groups: Set[str] = field(default_factory=set)
     
-    # V1.1 新增：Attenuation 曲线点池
+    # V1.1 新增:Attenuation 曲线点池
     atten_curves: Dict[str, List[str]] = field(default_factory=lambda: defaultdict(list))
     
-    # V1.1 新增：GameParameter 参数池
+    # V1.1 新增:GameParameter 参数池
     game_param_ranges: Dict[str, Tuple[float, float]] = field(default_factory=dict)
     
-    # V1.1 新增：Switch/State 值池
+    # V1.1 新增:Switch/State 值池
     switch_values: Dict[str, List[str]] = field(default_factory=lambda: defaultdict(list))
     state_values: Dict[str, List[str]] = field(default_factory=lambda: defaultdict(list))
     
     # 属性值
     prop_values: Dict[str, Set] = field(default_factory=lambda: defaultdict(set))
     
-    # 命名组件（用于生成新名称）
+    # 命名组件(用于生成新名称)
     name_prefixes: Set[str] = field(default_factory=set)
     name_suffixes: Set[str] = field(default_factory=set)
     name_middles: Set[str] = field(default_factory=set)
@@ -291,7 +291,7 @@ class DSLFission:
         """
         简单裂变 - 仅改名和微调
         
-        策略：
+        策略:
         1. 对象名称变异
         2. 数字后缀变化
         3. Bus/Attenuation 在同类中替换
@@ -311,18 +311,18 @@ class DSLFission:
                     mutated = self.name_mutator.mutate(name, self.pool, 0.5)
                     name_mapping[name] = mutated
             
-            # 应用名称替换（注意顺序，长名称优先）
+            # 应用名称替换(注意顺序,长名称优先)
             for old_name, new_name in sorted(name_mapping.items(), key=lambda x: -len(x[0])):
                 if old_name != new_name:
                     new_dsl = new_dsl.replace(f'"{old_name}"', f'"{new_name}"')
                     self.stats["name_mutations"] += 1
             
-            # 随机替换 Bus（同类替换）
+            # 随机替换 Bus(同类替换)
             if self.pool.buses and random.random() > 0.7:
                 new_dsl = self._swap_link_target(new_dsl, "Bus", self.pool.get_random_bus())
                 self.stats["parameter_swaps"] += 1
             
-            # 随机替换 Attenuation（同类替换）
+            # 随机替换 Attenuation(同类替换)
             if self.pool.attenuations and random.random() > 0.7:
                 new_attn = self.pool.get_random_attenuation()
                 if new_attn:
@@ -338,7 +338,7 @@ class DSLFission:
         """
         中级裂变 - 结构简化和子集提取
         
-        策略：
+        策略:
         1. 提取部分子树
         2. 移除可选属性
         3. 简化层级
@@ -365,7 +365,7 @@ class DSLFission:
         """
         高级裂变 - 跨样本组合
         
-        策略：
+        策略:
         1. 提取不同样本的子树进行组合
         2. 参数交叉替换
         """
@@ -386,17 +386,17 @@ class DSLFission:
         return results
     
     # =========================================================================
-    # V1.1 新增：参数类型专用裂变
+    # V1.1 新增:参数类型专用裂变
     # =========================================================================
     
     def fission_attenuation(self, dsl_code: str, count: int = 3) -> List[str]:
         """
         Attenuation 专用裂变
         
-        策略：
+        策略:
         1. 改名
         2. RadiusMax 在合理范围内变化
-        3. 曲线点微调（保持趋势）
+        3. 曲线点微调(保持趋势)
         """
         results = []
         
@@ -434,7 +434,7 @@ class DSLFission:
         """
         GameParameter 专用裂变
         
-        策略：
+        策略:
         1. 改名
         2. Min/Max 范围微调
         3. InitialValue 调整
@@ -477,7 +477,7 @@ class DSLFission:
         """
         SwitchGroup 专用裂变
         
-        策略：
+        策略:
         1. 改名
         2. 增减 Switch 数量
         3. Switch 改名
@@ -497,7 +497,7 @@ class DSLFission:
             # 收集所有 Switch
             switches = re.findall(r'CREATE Switch "([^"]+)"', dsl_code)
             
-            # 策略：随机移除一个 Switch 或改名
+            # 策略:随机移除一个 Switch 或改名
             if len(switches) > 2 and random.random() > 0.5:
                 # 移除一个
                 to_remove = random.choice(switches[1:])  # 保留第一个
@@ -535,7 +535,7 @@ class DSLFission:
             # 收集所有 State
             states = re.findall(r'CREATE State "([^"]+)"', dsl_code)
             
-            # 策略：随机移除一个 State 或改名
+            # 策略:随机移除一个 State 或改名
             if len(states) > 2 and random.random() > 0.5:
                 to_remove = random.choice(states[1:])
                 lines = [l for l in lines if f'"{to_remove}"' not in l]
@@ -657,7 +657,7 @@ class DSLFission:
         return names
     
     def _simplify_props(self, lines: List[str]) -> List[str]:
-        """简化属性，移除部分 SET_PROP"""
+        """简化属性,移除部分 SET_PROP"""
         result = []
         props_removed = 0
         max_remove = random.randint(1, 3)
@@ -738,8 +738,8 @@ class FissionProcessor:
         Returns:
             (原始数量, 最终数量)
         """
-        # 第一遍：读取所有样本并构建参数池
-        print("📊 第一阶段：分析现有数据，构建参数池...")
+        # 第一遍:读取所有样本并构建参数池
+        print("📊 第一阶段:分析现有数据,构建参数池...")
         samples = []
         
         with open(input_path, 'r', encoding='utf-8') as f:
@@ -766,7 +766,7 @@ class FissionProcessor:
         # 计算需要裂变的数量
         needed = max(0, target_count - original_count)
         if needed == 0:
-            print(f"   ✅ 已有 {original_count} 样本，无需裂变")
+            print(f"   ✅ 已有 {original_count} 样本,无需裂变")
             # 直接复制
             with open(output_path, 'w', encoding='utf-8') as f:
                 for s in samples:
@@ -775,8 +775,8 @@ class FissionProcessor:
         
         print(f"   需要裂变: {needed} 个新样本")
         
-        # 第二遍：裂变
-        print(f"\n🔬 第二阶段：执行 {level} 级别裂变...")
+        # 第二遍:裂变
+        print(f"\n🔬 第二阶段:执行 {level} 级别裂变...")
         
         new_samples = []
         iterations = 0
@@ -834,7 +834,7 @@ class FissionProcessor:
                     new_sample["meta"]["fissioned"] = True
                     new_sample["meta"]["fission_level"] = level
                     
-                    # 更新 instruction（简单变化）
+                    # 更新 instruction(简单变化)
                     new_sample["instruction"] = self._mutate_instruction(
                         base_sample.get("instruction", "")
                     )
@@ -850,7 +850,7 @@ class FissionProcessor:
                 print(f"   已生成 {len(new_samples)}/{needed} ...")
         
         # 写入结果
-        print(f"\n📝 第三阶段：写入结果...")
+        print(f"\n📝 第三阶段:写入结果...")
         
         final_samples = samples + new_samples
         random.shuffle(final_samples)  # 打乱顺序
@@ -934,9 +934,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 裂变级别说明:
-  simple   - 仅改名、微调数值、同类参数替换（最安全）
-  medium   - 结构简化、子集提取（中等风险）
-  advanced - 跨样本组合、参数交叉（需要验证）
+  simple   - 仅改名、微调数值、同类参数替换(最安全)
+  medium   - 结构简化、子集提取(中等风险)
+  advanced - 跨样本组合、参数交叉(需要验证)
   auto     - 自动混合各级别
 
 示例:
@@ -960,7 +960,7 @@ def main():
                         default="simple",
                         help="裂变级别 (默认: simple)")
     parser.add_argument("--seed", type=int, default=None,
-                        help="随机种子（用于复现）")
+                        help="随机种子(用于复现)")
     
     args = parser.parse_args()
     
