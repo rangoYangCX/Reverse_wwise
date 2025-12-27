@@ -7,7 +7,7 @@
 3. 平衡数据集各类型占比
 
 使用方法：
-    python dataset_optimizer.py combined_wwise_data_v2.jsonl -o optimized_dataset.jsonl
+    python dataset_optimizer.py combined_wwise_data_v1.jsonl -o optimized_dataset.jsonl
 """
 
 import json

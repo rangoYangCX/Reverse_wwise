@@ -2,7 +2,7 @@
 # 🛑 手动中断后 - GGUF 打包 & 上传脚本
 # =============================================================================
 # 使用场景:
-# 1. 训练差不多了，想提前停止
+# 1. 训练差不多了,想提前停止
 # 2. 训练被意外中断
 # 3. 训练完成但上传失败
 #
@@ -172,7 +172,7 @@ for attempt in range(MAX_RETRIES):
             print("等待 10 秒后重试...")
             time.sleep(10)
         else:
-            print("⚠️ LoRA 上传失败，继续尝试 GGUF...")
+            print("⚠️ LoRA 上传失败,继续尝试 GGUF...")
 
 # =============================================================================
 # Step 5: 加载模型用于 GGUF 转换
@@ -222,7 +222,7 @@ print("-"*40)
 GGUF_DIR = "model_gguf"
 
 print(f"开始 GGUF 转换 ({MODEL_SIZE}, q4_k_m)...")
-print("⏳ 这可能需要 10-20 分钟，请耐心等待...")
+print("⏳ 这可能需要 10-20 分钟,请耐心等待...")
 
 start_time = time.time()
 
@@ -259,7 +259,7 @@ try:
         
 except Exception as e:
     print(f"❌ GGUF 转换失败: {e}")
-    print("\n💡 可以尝试手动转换，参考 llama.cpp")
+    print("\n💡 可以尝试手动转换,参考 llama.cpp")
     sys.exit(1)
 
 # =============================================================================
@@ -294,7 +294,7 @@ for attempt in range(MAX_RETRIES):
             print("等待 30 秒后重试...")
             time.sleep(30)
         else:
-            print(f"⚠️ GGUF 上传失败，本地文件保存在: {gguf_path}")
+            print(f"⚠️ GGUF 上传失败,本地文件保存在: {gguf_path}")
 
 # =============================================================================
 # Step 8: 上传 Modelfile
@@ -311,7 +311,7 @@ TEMPLATE """<|im_start|>system
 <|im_start|>assistant
 """
 
-SYSTEM """你是一个专业的 Wwise 音频技术专家，精通 DSL 代码生成。根据用户的需求，生成符合 Wwise 工程规范的 DSL 代码。"""
+SYSTEM """你是一个专业的 Wwise 音频技术专家,精通 DSL 代码生成。根据用户的需求,生成符合 Wwise 工程规范的 DSL 代码。"""
 
 PARAMETER temperature 0.7
 PARAMETER top_p 0.9

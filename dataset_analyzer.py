@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-【数据集分析与预处理工具】V1.0
-功能：
-1. 分析数据集的样本分布（类型、长度、复杂度）
-2. 检查是否包含各类数据（Audio/Event/参数）
+[数据集分析与预处理工具]V1.0
+功能:
+1. 分析数据集的样本分布(类型、长度、复杂度)
+2. 检查是否包含各类数据(Audio/Event/参数)
 3. 自动计算最佳 max_seq_length
 4. 过滤或截断超长样本
 5. 生成训练就绪的数据集
 
-使用方法：
+使用方法:
     python dataset_analyzer.py optimized_dataset_processed.jsonl
 """
 
@@ -165,11 +165,11 @@ class DatasetAnalyzer:
             
             if root_type == "Event":
                 coverage["has_event"] = True
-                # 检查是否有完整工作流（Event + 包含 Container 创建）
+                # 检查是否有完整工作流(Event + 包含 Container 创建)
                 if "RandomSequenceContainer" in output or "SwitchContainer" in output:
                     coverage["has_workflow"] = True
             
-            # 检查 Workflow 类型（由 dataset_optimizer 生成）
+            # 检查 Workflow 类型(由 dataset_optimizer 生成)
             if root_type == "Workflow":
                 coverage["has_event"] = True
                 coverage["has_workflow"] = True
@@ -201,7 +201,7 @@ class DatasetAnalyzer:
     def _estimate_tokens(self):
         """估算 Token 数量"""
         # 粗略估算: 中文约 1.5 token/字符, 英文约 0.25 token/字符
-        # DSL 代码主要是英文，估算 0.3 token/字符
+        # DSL 代码主要是英文,估算 0.3 token/字符
         
         token_estimates = []
         for s in self.samples:
@@ -280,11 +280,11 @@ class DatasetPreprocessor:
         
         Args:
             max_lines: 最大行数
-            max_tokens: 最大 token 数（估算）
+            max_tokens: 最大 token 数(估算)
             strategy: 处理策略
                 - truncate: 截断超长部分
                 - filter: 过滤超长样本
-                - split: 拆分超长样本（暂未实现）
+                - split: 拆分超长样本(暂未实现)
             keep_ratio: 期望保留的样本比例
         """
         print("\n" + "=" * 60)
@@ -314,7 +314,7 @@ class DatasetPreprocessor:
                 # 正常样本直接添加
                 self.processed.append(s)
             elif strategy == "filter":
-                # 过滤策略：直接跳过
+                # 过滤策略:直接跳过
                 filtered_count += 1
             elif strategy == "truncate":
                 # 截断策略
@@ -347,10 +347,10 @@ class DatasetPreprocessor:
     
     def balance_dataset(self, target_ratio: Dict[str, float] = None) -> List[Dict]:
         """
-        平衡数据集（按类型）
+        平衡数据集(按类型)
         
         Args:
-            target_ratio: 目标比例，如 {"audio": 0.5, "event": 0.2, ...}
+            target_ratio: 目标比例,如 {"audio": 0.5, "event": 0.2, ...}
         """
         if target_ratio is None:
             # 默认比例
@@ -418,7 +418,7 @@ def main():
     parser.add_argument("--max-tokens", type=int, default=2048, help="最大 tokens (默认 2048)")
     parser.add_argument("--strategy", type=str, default="truncate", 
                         choices=["truncate", "filter"], help="处理策略")
-    parser.add_argument("--analyze-only", action="store_true", help="仅分析，不处理")
+    parser.add_argument("--analyze-only", action="store_true", help="仅分析,不处理")
     
     args = parser.parse_args()
     

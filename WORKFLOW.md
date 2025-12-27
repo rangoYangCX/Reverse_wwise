@@ -253,7 +253,7 @@ python upload_to_hf.py optimized_dataset.jsonl
 
 **Step 8.2: 上传数据集 (可选)**
 
-如果要用本地数据集，上传 `wwise_phase2_full_22k.jsonl` 到 Colab
+如果要用本地数据集,上传 `wwise_phase2_full_22k.jsonl` 到 Colab
 
 **Step 8.3: 运行训练脚本**
 
@@ -266,14 +266,14 @@ BATCH_SIZE = 4
 GRAD_ACCUM = 4
 EFFECTIVE_BS = 16
 EPOCHS = 2
-# 步数 ≈ 2750，时间 3-4h
+# 步数 ≈ 2750,时间 3-4h
 
 # A100 GPU (40GB)  
 BATCH_SIZE = 8
 GRAD_ACCUM = 4
 EFFECTIVE_BS = 32
 EPOCHS = 2
-# 步数 ≈ 1375，时间 1.5-2h
+# 步数 ≈ 1375,时间 1.5-2h
 ```
 
 **训练进度**:
@@ -318,7 +318,7 @@ ollama run wwise-dsl
 
 **测试**:
 ```
->>> 创建一个脚步声系统，支持不同地面类型切换
+>>> 创建一个脚步声系统,支持不同地面类型切换
 
 Audio("Footsteps") {
     Container("SurfaceSwitch", mode="switch", switch_group="Surface_Type") {
@@ -395,7 +395,7 @@ python dataset_optimizer.py \
 
 ```
 原因: XML 格式不标准
-解决: 确保 Wwise 工程已保存，使用 Wwise 2021+ 版本
+解决: 确保 Wwise 工程已保存,使用 Wwise 2021+ 版本
 ```
 
 ### Q2: 验证器报告大量失败
@@ -456,11 +456,11 @@ gc.collect()
 
 1. **温度**: 0.7 平衡创造性和准确性
 2. **Top-p**: 0.9 保证输出多样性
-3. **提示词**: 使用中文，描述具体需求
+3. **提示词**: 使用中文,描述具体需求
 
 ---
 
-## 附录：DSL 语法参考
+## 附录:DSL 语法参考
 
 ```
 # Audio 层级

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-【数据集优化器】V1.0
-功能：
+[数据集优化器]V1.0
+功能:
 1. 自动降采样过多的 GameParameter
-2. 生成真正的 Event+Target 工作流样本（Container + Event 一体）
+2. 生成真正的 Event+Target 工作流样本(Container + Event 一体)
 3. 平衡数据集各类型占比
 
-使用方法：
+使用方法:
     python dataset_optimizer.py combined_wwise_data_v1.jsonl -o optimized_dataset.jsonl
 """
 
@@ -49,14 +49,14 @@ class WorkflowGenerator:
     
     # Instruction 模板
     WORKFLOW_TEMPLATES = [
-        "创建 {name} 的完整音效结构，并生成对应的播放 Event",
-        "帮我搭建 {name}，包含音效层级和触发事件",
+        "创建 {name} 的完整音效结构,并生成对应的播放 Event",
+        "帮我搭建 {name},包含音效层级和触发事件",
         "做 {name} 的 SFX 结构和播放 Event",
-        "创建 {name} 相关的音效和 Event，要能在游戏中播放",
-        "构建 {name} 的完整工作流：先建结构，再建事件",
-        "生成 {name} 的音效层级，并创建 Play Event",
-        "搭建 {name}，需要包含容器结构和对应的触发 Event",
-        "做一套 {name} 的完整音效，包括层级和播放事件",
+        "创建 {name} 相关的音效和 Event,要能在游戏中播放",
+        "构建 {name} 的完整工作流:先建结构,再建事件",
+        "生成 {name} 的音效层级,并创建 Play Event",
+        "搭建 {name},需要包含容器结构和对应的触发 Event",
+        "做一套 {name} 的完整音效,包括层级和播放事件",
     ]
     
     # Event 父级选项
@@ -185,7 +185,7 @@ class DatasetOptimizer:
         为部分 Container 样本生成工作流版本
         
         Args:
-            ratio: 生成工作流的比例（默认 30% 的 Container 会有工作流版本）
+            ratio: 生成工作流的比例(默认 30% 的 Container 会有工作流版本)
         """
         workflow_samples = []
         container_count = 0
@@ -202,9 +202,9 @@ class DatasetOptimizer:
             if random.random() > ratio:
                 continue
             
-            # 检查原始 output 长度，太长的不生成工作流
+            # 检查原始 output 长度,太长的不生成工作流
             original_lines = s.get("meta", {}).get("line_count", 0)
-            if original_lines > 60:  # 超过60行的不生成，避免太长
+            if original_lines > 60:  # 超过60行的不生成,避免太长
                 continue
             
             workflow = WorkflowGenerator.generate_workflow_sample(s)

@@ -262,7 +262,7 @@ for attempt in range(MAX_RETRIES):
             print("等待 10 秒后重试...")
             time.sleep(10)
         else:
-            print("⚠️ LoRA 上传失败，但继续执行 GGUF 转换")
+            print("⚠️ LoRA 上传失败,但继续执行 GGUF 转换")
 
 # =============================================================================
 # 📦 Step 3: GGUF 转换
@@ -285,7 +285,7 @@ print(f"当前显存: {used:.1f} GB")
 gguf_success = False
 try:
     print("\n开始 GGUF 转换 (q4_k_m)...")
-    print("⏳ 这可能需要 10-20 分钟，请耐心等待...")
+    print("⏳ 这可能需要 10-20 分钟,请耐心等待...")
     
     model.save_pretrained_gguf(
         GGUF_DIR, 
@@ -366,7 +366,7 @@ TEMPLATE """<|im_start|>system
 <|im_start|>assistant
 """
 
-SYSTEM """你是一个专业的 Wwise 音频技术专家，精通 DSL 代码生成。根据用户的需求，生成符合 Wwise 工程规范的 DSL 代码。"""
+SYSTEM """你是一个专业的 Wwise 音频技术专家,精通 DSL 代码生成。根据用户的需求,生成符合 Wwise 工程规范的 DSL 代码。"""
 
 PARAMETER temperature 0.7
 PARAMETER top_p 0.9
@@ -436,7 +436,7 @@ try:
     if all_ok:
         print("\n🎉 所有文件上传成功!")
     else:
-        print("\n⚠️ 部分文件缺失，请检查")
+        print("\n⚠️ 部分文件缺失,请检查")
         
 except Exception as e:
     print(f"⚠️ 验证失败: {e}")

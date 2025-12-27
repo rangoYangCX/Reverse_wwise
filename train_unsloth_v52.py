@@ -2,11 +2,11 @@
 # 🚀 Wwise Engineering Brain - 终极全自动训练脚本 V5.2 (显存优化版)
 # =============================================================================
 # 核心优化:
-# 1. [智能] 自动识别 L4/A100 高显存环境，自动开启优化 Batch 模式
+# 1. [智能] 自动识别 L4/A100 高显存环境,自动开启优化 Batch 模式
 # 2. [极速] 训练时长控制在 3-4 小时 (L4 GPU)
-# 3. [双源] 优先读取本地上传的 JSONL，无文件则自动从 HF 下载
+# 3. [双源] 优先读取本地上传的 JSONL,无文件则自动从 HF 下载
 # 4. [安全] 支持 Colab Secrets 或手动输入 Token
-# 5. [稳健] OOM 自动降级 + 深度显存清理，防止崩溃
+# 5. [稳健] OOM 自动降级 + 深度显存清理,防止崩溃
 # 6. [完整] 包含训练、LoRA备份、GGUF转换、Modelfile生成、自动上传
 # =============================================================================
 
@@ -66,7 +66,7 @@ except:
     print("   方法2: 手动输入 Token")
     HF_TOKEN = input("\n请输入 HuggingFace Token (留空退出): ").strip()
     if not HF_TOKEN:
-        print("❌ Token 不能为空，退出")
+        print("❌ Token 不能为空,退出")
         raise SystemExit()
 
 os.environ["HF_TOKEN"] = HF_TOKEN
@@ -104,7 +104,7 @@ if total_vram > 35:  # A100 (40GB)
     GRAD_ACCUM_STEPS = 4
     print("🚀 A100 环境: 激活极速模式 (Batch Size = 8)")
 elif total_vram > 20:  # L4 (24GB)
-    BATCH_SIZE_PER_DEVICE = 4  # 安全值，避免 OOM
+    BATCH_SIZE_PER_DEVICE = 4  # 安全值,避免 OOM
     GRAD_ACCUM_STEPS = 4
     print("🚀 L4 环境: Turbo 模式 (Batch Size = 4)")
 elif total_vram > 14:  # T4 (16GB)
@@ -132,7 +132,7 @@ if os.path.exists(LOCAL_DATASET_NAME):
     print(f"✅ 发现本地数据集: {LOCAL_DATASET_NAME}")
     data_file_path = LOCAL_DATASET_NAME
 else:
-    print(f"⚠️ 本地未找到，从 HuggingFace 下载...")
+    print(f"⚠️ 本地未找到,从 HuggingFace 下载...")
     try:
         data_file_path = hf_hub_download(
             repo_id=HF_DATASET_REPO,
@@ -249,7 +249,7 @@ print(f"📊 当前可用显存: {free_mem:.2f} GB")
 
 # OOM 自动降级机制
 def try_train(batch_size, grad_accum):
-    """尝试训练，OOM 时返回 False"""
+    """尝试训练,OOM 时返回 False"""
     global trainer
     try:
         training_args = TrainingArguments(
@@ -295,7 +295,7 @@ def try_train(batch_size, grad_accum):
             return False
         raise e
 
-# 尝试训练，OOM 时自动降级
+# 尝试训练,OOM 时自动降级
 start_time = time.time()
 train_success = False
 
@@ -316,7 +316,7 @@ for bs, ga in batch_configs:
     print("   重试中...")
 
 if not train_success:
-    print("❌ 所有配置都 OOM，请使用更大显存的 GPU")
+    print("❌ 所有配置都 OOM,请使用更大显存的 GPU")
     sys.exit(1)
 
 train_time = str(timedelta(seconds=int(time.time() - start_time)))
@@ -401,7 +401,7 @@ TEMPLATE """<|im_start|>system
 <|im_start|>assistant
 """
 
-SYSTEM """你是一个专业的 Wwise 音频技术专家，精通 DSL 代码生成。"""
+SYSTEM """你是一个专业的 Wwise 音频技术专家,精通 DSL 代码生成。"""
 
 PARAMETER temperature 0.7
 PARAMETER top_p 0.9

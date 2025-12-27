@@ -9,7 +9,7 @@
 5. 生成训练就绪的数据集
 
 使用方法：
-    python dataset_analyzer.py your_dataset.jsonl
+    python dataset_analyzer.py optimized_dataset_processed.jsonl
 """
 
 import json
